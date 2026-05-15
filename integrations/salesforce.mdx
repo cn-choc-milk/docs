@@ -1,0 +1,291 @@
+---
+title: "Salesforce"
+description: "Connect a Salesforce org to Synapse for metadata access and governed deployment. Supports sandbox orgs, scratch orgs, and DevHub."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Salesforce Architect"
+---
+
+## What it is
+
+The Salesforce integration connects one or more Salesforce orgs to Synapse so that specialist leads and specialists can read org metadata, analyze impact, and deploy approved changes through governed Runs. Synapse supports sandbox orgs (via OAuth or CLI auth URL), scratch orgs (provisioned from a DevHub pool), and direct DevHub connections.
+
+## When to use it
+
+Connect a Salesforce org before you launch any Run that needs to read metadata from or deploy changes to Salesforce. A connection is required for:
+
+- Metadata-aware Blueprint composition (the Architecture Lead reads the org schema during planning)
+- Scratch org provisioning (a DevHub connection is required to provision orgs from the pool)
+- Approved deployment execution (the Build Specialist deploys to the connected org)
+- Governor limit analysis (the governor analyzer reads the org's aggregate usage)
+
+You do not need a Salesforce connection to compose Blueprints from Jira issues or to run Exploration-tier sandbox Runs that do not target a Salesforce org.
+
+## Salesforce delivery example
+
+An admin connects the team's UAT sandbox by generating a CLI auth URL from SFDX and storing it in the credentials vault under label `uat-sandbox`. A Blueprint for an Apex trigger change is approved and launched at Standard tier targeting `uat-sandbox`. The Architecture Lead reads trigger dependencies from the org metadata. The Build Specialist implements the trigger inside an Execution Node. Sentinel runs all seven core gates — including Apex compilation and test execution against the UAT org. The gates pass. A human reviewer approves the deployment in Nexus. The trigger is deployed. The Run's audit trail records every gate result, the approval, and the deployment outcome.
+
+## Required access
+
+- **Admin or Owner** — required to add or disconnect a Salesforce org connection
+- **Salesforce System Administrator** — the Salesforce user completing the OAuth flow must have System Administrator profile or equivalent permissions
+
+## Governance notes
+
+Salesforce credentials (access tokens, refresh tokens, CLI auth URLs) are stored encrypted in the `salesforce_connections` table (tokens) and in the `credentials_vault` table (CLI auth URLs), using AES-256-GCM encryption. Tokens auto-refresh via the `TokenSyncService` before each use. The plaintext token is never logged or passed through specialist prompts.
+
+Connecting a production Salesforce org requires the production-tier governance configuration (`Strict`) for any Run that deploys to that org. At Strict tier, every task requires human approval before dispatch, Sentinel enforcement is blocking, and all org tests must pass.
+
+---
+
+## Supported connection types
+
+### Sandbox org or production org (OAuth)
+
+Standard OAuth 2.0 flow using a Salesforce Connected App. Best for interactive sessions and orgs where you want automatic token refresh.
+
+### Sandbox org (CLI auth URL)
+
+SFDX-generated auth URLs stored in the credentials vault. Best for CI/CD-style integrations and non-interactive environments. The auth URL contains both the access token and the refresh token in one string.
+
+### Scratch org (via DevHub)
+
+Scratch orgs are provisioned on demand from a DevHub connection and a scratch org definition. The DevHub connection is a separate credential that authorizes Synapse to provision orgs from the pool. Individual scratch org credentials are provisioned at Run time and released when the Run completes.
+
+---
+
+## Setting up an org connection (OAuth)
+
+### Step 1 — Create a Connected App in Salesforce
+
+1. In your Salesforce org, navigate to **Setup → App Manager**.
+2. Click **New Connected App**.
+3. Enable **OAuth Settings**.
+4. Set the **Callback URL** to the value shown in Synapse under Settings → Integrations → Salesforce. The URL is specific to your Synapse workspace.
+5. Select the following **OAuth Scopes**:
+
+   | Scope | Required for |
+   |---|---|
+   | `api` | API access for metadata and deployment |
+   | `refresh_token, offline_access` | Token refresh without user re-authentication |
+   | `visualforce` | (optional) Visual Force page access if applicable |
+
+6. Save the Connected App and wait 10 minutes for Salesforce to activate it.
+7. Copy the **Consumer Key** and **Consumer Secret**.
+
+### Step 2 — Connect in Synapse
+
+1. Navigate to **Settings → Integrations → Salesforce**.
+2. Click **Connect org**.
+3. Choose **OAuth** as the connection type.
+4. Enter your Salesforce **Instance URL** (for example, `https://na1.salesforce.com` or `https://your-domain.my.salesforce.com`).
+5. Enter the **Consumer Key** (Client ID) and **Consumer Secret**.
+6. Click **Authorize**. You are redirected to Salesforce to grant access.
+7. After authorization, the connection appears with status **Active**.
+
+---
+
+## Setting up an org connection (CLI auth URL)
+
+### Step 1 — Generate a CLI auth URL using SFDX
+
+```bash
+sfdx force:org:display --verbose --json -u your-org-alias
+```
+
+The output contains an `sfdxAuthUrl` field. Copy the value — it starts with `force://`. This URL encodes both the access token and refresh token and the instance URL.
+
+### Step 2 — Store the auth URL in the credentials vault
+
+1. Navigate to **Settings → Credentials**.
+2. Click **Add credential**.
+3. Choose **Service: Salesforce**.
+4. Enter a **Label** (for example, `uat-sandbox` or `prod-org`).
+5. Paste the CLI auth URL as the credential value.
+6. Optionally link to a specific **Project** to scope access.
+7. Click **Save**.
+
+The auth URL is validated on save. If the format is invalid, the vault returns a validation error and the credential is not stored.
+
+---
+
+## Setting up a DevHub connection
+
+A DevHub connection allows Synapse to provision scratch orgs from the DevHub's org pool.
+
+### Step 1 — Enable DevHub in Salesforce
+
+In your DevHub org, navigate to **Setup → Dev Hub** and enable Dev Hub.
+
+### Step 2 — Connect the DevHub in Synapse
+
+1. Navigate to **Settings → Integrations → Salesforce → DevHub**.
+2. Click **Connect DevHub**.
+3. Complete the OAuth flow with a Salesforce user who has DevHub access.
+4. After connection, Synapse can provision scratch orgs using scratch org definition files stored in the project.
+
+### Scratch org provisioning
+
+When a Run requires a scratch org, Synapse checks the scratch org pool for an available org matching the definition file in the project. If none is available, a new scratch org is provisioned from the DevHub. Scratch orgs are released back to the pool (or deleted) when the Run completes.
+
+---
+
+## Required Salesforce permissions
+
+**Recommended:** A dedicated integration user with Author Apex, Customize Application, and a permission set granting the specific object/field access for the Blueprint.
+
+| Permission | Required for |
+|---|---|
+| **Author Apex** | Apex compilation and deployment |
+| **Customize Application** | Custom object and field changes |
+| **Deploy Changesets** or **Modify All Data** | Deploying metadata to the org |
+| **View All Data** (or scoped to the required objects) | Reading existing metadata for impact analysis |
+
+Modify All Data is permitted for trusted environments but not recommended for production orgs. Use the least-privilege option unless your deployment scope requires it.
+
+For read-only operations (metadata analysis, governor limit checks), the minimum required permission set is read-only API access.
+
+---
+
+## Metadata types supported
+
+The Architecture Lead and Build Specialist specialists can access and deploy the following Salesforce metadata types:
+
+| Metadata type | API name |
+|---|---|
+| Custom Objects | `CustomObject` |
+| Apex Classes | `ApexClass` |
+| Apex Triggers | `ApexTrigger` |
+| Flows | `Flow` |
+| Lightning Web Components | `LightningComponentBundle` |
+| Custom Fields | `CustomField` |
+| Validation Rules | `ValidationRule` |
+| Permission Sets | `PermissionSet` |
+| Profiles (read-only analysis) | `Profile` |
+
+Additional metadata types may be accessible depending on the org's configuration. The metadata list is retrieved from the org's Metadata API `describeMetadata` call at connection time.
+
+---
+
+## Metadata Intelligence Engine analysis
+
+The Metadata Intelligence Engine (MIE) transforms synced metadata into a searchable knowledge graph. It identifies patterns, risks, technical debt, and component dependencies that inform Blueprint creation and impact analysis.
+
+### Running an analysis
+
+1. Ensure your Salesforce org is connected (Settings > Integrations).
+2. Navigate to **MIE** from the sidebar or **Discovery > Metadata Analysis**.
+3. Click **Run Full Analysis** to start metadata ingestion.
+4. Analysis completes in five to fifteen minutes for typical orgs. Larger orgs may take longer.
+5. The dashboard shows total objects, fields, automations, and quality score.
+
+### Key capabilities
+
+- **Graph-based analysis** — component nodes connected by relationship edges
+- **Semantic search** — natural language queries across all metadata
+- **Quality scoring** — naming conventions, documentation coverage, test coverage per component
+- **Risk detection** — security gaps, governor limit risks, anti-patterns
+- **Trend analysis** — org complexity changes over time
+
+MIE is read-only. It only retrieves metadata via the Salesforce Metadata API. No changes are made to your org during analysis.
+
+---
+
+## Governor Limit Analyzer
+
+The Governor Limit Analyzer performs aggregate analysis of Salesforce governor limit consumption across transaction call chains. It traces entire call chains (trigger → class → class → callout) and aggregates SOQL queries, DML operations, CPU time, and other governor-limited resources across the full execution path.
+
+### When to use it
+
+- **Pre-deployment** — analyze code before deploying to production
+- **Performance debugging** — diagnose governor limit errors in existing code
+- **Bulk data planning** — understand how code behaves with large record volumes
+- **Code review** — verify that new code does not push existing transactions over limits
+- **Architecture decisions** — choose between sync and async patterns based on limit budgets
+
+### How to access it
+
+1. Click **Governor Analyzer** in the sidebar.
+2. Or from any Apex class, click **Tools > Analyze Governor Limits**.
+3. Also available as Sentinel Gate 7 — runs automatically during every Run.
+
+### Reading the results
+
+| Limit | Sync cap | Async cap |
+|---|---|---|
+| SOQL queries | 100 | 200 |
+| DML statements | 150 | 150 |
+| CPU time | 10,000 ms | 60,000 ms |
+| Heap size | 6 MB | 12 MB |
+| Callouts | 100 | 100 |
+| Queueable jobs | 50 | 1 |
+
+Color coding: green (0–60% of limit) is safe headroom; amber (60–85%) means optimize proactively; red (85–100%) is critical risk that must be resolved before deployment.
+
+### Viewing the call chain
+
+Click **Call Chain** to see the full transaction flow — entry point, each method call in sequence, governor usage per method, and cumulative totals. Click any method to see its specific contribution and identify hotspots.
+
+### Fix recommendations
+
+Click **Get Fix Suggestions** on any amber or red limit. Leads and specialists analyze the code and suggest bulkification, async offloading, query caching, or selective SOQL. Click **Apply Fix** to let the specialist implement the suggestion, then re-run the analysis to verify the improvement.
+
+### Best practices
+
+- **Analyze at 200 records.** Salesforce triggers process up to 200 records per transaction. Always test at maximum volume.
+- **Check triggers first.** Triggers are the most common source of governor limit issues.
+- **Watch for nested loops.** SOQL or DML inside loops is the primary cause of limit violations.
+- **Use async for heavy work.** Move callouts, large DML operations, and complex processing to async jobs.
+- **Re-analyze after fixes.** Always verify that fixes reduced consumption before deploying.
+
+---
+
+## Token management
+
+Salesforce access tokens expire. Synapse handles refresh automatically:
+
+1. Before every API call, the `TokenSyncService` checks the `token_expires_at` field for the connection.
+2. If the token expires within 5 minutes, it is refreshed using the stored refresh token.
+3. The refreshed access token and new expiry are written back to `salesforce_connections`.
+4. If the refresh fails (for example, the refresh token has been revoked), the connection status changes to **Token expired** and the admin is notified through Nexus.
+
+For CLI auth URL credentials, the auth URL itself contains the refresh token. Synapse extracts and uses it automatically.
+
+---
+
+## Verifying the connection
+
+After setup:
+
+1. In **Settings → Integrations → Salesforce**, check the **Status** badge: should read **Active**.
+2. The **Last sync** timestamp shows the most recent successful metadata read.
+3. Click **Test connection** to run an immediate health check against the org's API endpoint.
+
+If the status shows **Degraded**:
+- Confirm the Connected App is still active in Salesforce.
+- Check that the OAuth scopes have not been modified.
+- Check that the Salesforce user whose token is stored is still active.
+- For CLI auth URL connections, check whether the token has been manually revoked in Salesforce.
+
+---
+
+## Disconnecting
+
+To disconnect a Salesforce org:
+
+1. Navigate to **Settings → Integrations → Salesforce**.
+2. Click **Disconnect** on the org you want to remove.
+3. Confirm in the dialog.
+
+Disconnecting removes the access and refresh tokens from `salesforce_connections` and removes any CLI auth URL credential associated with the connection from the vault. Existing Run records that used this connection retain their audit entries. Any Blueprint task that referenced this org's credentials will fail on its next Run with a `CREDENTIAL_NOT_FOUND` error until a new connection is configured.
+
+---
+
+## Cross-references
+
+- [Credential Scopes](../secrets/scopes) — how Salesforce credentials are scoped by project
+- [Approval Gates](../security-governance/approval-gates) — Sentinel gates that run before deployment to any Salesforce org
+- [Runs — Lifecycle](../runs/lifecycle) — how a Run's governance tier determines which org types are accessible
+- [Sandboxes](../sandboxes/index) — the execution environment that wraps all specialist activity before it reaches Salesforce

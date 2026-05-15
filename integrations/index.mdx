@@ -1,0 +1,91 @@
+---
+title: "Integrations"
+description: "Connect Synapse to the systems your Salesforce team already uses. Jira and Salesforce are live at launch; additional integrations are coming."
+audience: "admin"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Integrations connect Synapse to the external systems that generate delivery Signals (Jira), receive approved changes (Salesforce), manage source code (GitHub), and notify teams (Slack). Connecting an integration makes its data available to Blueprints, Runs, and the Salesforce-specialist leads and specialists that execute delivery work.
+
+## When to use it
+
+Set up integrations before you launch your first Run. A Jira connection is required for the Jira Autopilot path. A Salesforce connection is required for any Run that deploys metadata to an org. Additional integrations extend the surface area of governed delivery without requiring new Blueprints to describe work that is already tracked elsewhere.
+
+## Salesforce delivery example
+
+A Salesforce team uses Jira to track all delivery work. Connecting Jira to Synapse makes incoming Jira issues available as Signals. When a new issue is classified by Jira Autopilot, it becomes a Blueprint that the team approves and executes as a Run against the connected Salesforce sandbox. The Run result — a deployment success or failure — is written back to the original Jira issue as a structured comment. The full delivery chain from Signal to deployed change is visible in both systems.
+
+## Required access
+
+- **Admin or Owner** — required to add, configure, or disconnect any integration
+- **Member or Viewer** — can view integration status but cannot configure
+
+## Governance notes
+
+Every integration connection is scoped to one tenant. Credentials stored during integration setup are encrypted using AES-256-GCM and stored in the tenant's credential vault. No integration credential is shared across tenants. Disconnecting an integration removes the associated credential from the vault. See [Secrets](../secrets/index) and [Credential Scopes](../secrets/scopes) for how integration-level credentials work.
+
+---
+
+## Integrations at launch
+
+### Signal sources
+
+| Integration | Status | Role in delivery |
+|---|---|---|
+| **Jira** | Live | Inbound Signals — issues become Blueprints via Jira Autopilot |
+
+### Action destinations
+
+| Integration | Status | Role in delivery |
+|---|---|---|
+| **Salesforce** | Live | Metadata deployment target, org schema source |
+
+### Coming soon
+
+| Integration | Expected role |
+|---|---|
+| **GitHub** | Source control for sandbox branch output; PR creation from Run artifacts |
+| **Slack** | Team notifications for Run status, approval requests, and Sentinel alerts |
+| **Azure DevOps** | Work item Signal source; pipeline trigger destination |
+
+---
+
+## Integration setup overview
+
+Each integration setup follows the same pattern:
+
+1. Navigate to **Settings → Integrations**.
+2. Select the integration you want to add.
+3. Complete the connection flow (OAuth, API key, or CLI auth depending on the integration).
+4. Verify the connection is active.
+5. Use the integration in Blueprint configuration.
+
+Integration-specific setup guides:
+
+- [Jira](./jira) — OAuth setup, scopes, Autopilot configuration
+- [Salesforce](./salesforce) — org auth, required permissions, DevHub, metadata access
+
+---
+
+## Specialist access to integrations
+
+Salesforce-specialist leads and specialists access integration data during Run execution through scoped credentials — they do not have direct authenticated sessions to external systems. The credentials vault resolves the correct integration credential for each task at execution time. Specialists cannot manufacture or request credentials outside the scope of the task they are executing.
+
+This means: if your Jira integration is connected at tenant level, every Run in the tenant can read Jira issues. If you want to restrict Jira access to a specific project's Runs, store the Jira credential at project scope. See [Credential Scopes](../secrets/scopes).
+
+---
+
+## Managing integrations
+
+View all connected services in **Connected Sources** to:
+
+- Check connection status and last sync time
+- Trigger a manual sync
+- Disconnect a service
+- View sync history and error log
+- Rotate credentials or re-authorize
