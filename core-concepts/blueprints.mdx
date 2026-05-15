@@ -1,0 +1,110 @@
+---
+title: "Blueprints"
+description: "A Blueprint is a structured Salesforce delivery plan with tasks, phases, dependencies, approval gates, and specialist assignments. It is what you compose, review, and approve before any work begins."
+audience: "Salesforce developers, architects, project managers, delivery leads"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+A Blueprint is the structured Salesforce delivery plan that sits between a Signal and a Run. It breaks down delivery work into phases, tasks, dependencies, risk assessments, and specialist assignments. When a Blueprint is approved, it becomes the executable specification that leads and specialists act on.
+
+## When to use it
+
+Create a Blueprint at the start of any Salesforce delivery engagement — whether the work starts from a Jira Signal (Jira-to-Run path) or from a project in which you configure a POD (Project-to-POD path). Blueprints are appropriate for:
+
+- Multi-component metadata changes with ordered dependencies
+- Changes that require stakeholder approval before execution
+- Work that must be assigned to specific Salesforce-specialist leads and specialists
+- Any delivery scenario where you need a traceable, auditable record of intent before execution begins
+
+## Salesforce delivery example
+
+A Jira issue arrives describing a CPQ quoting-flow change. Jira Autopilot classifies it and creates a Blueprint with six tasks: (1) metadata impact analysis, (2) schema design review, (3) Apex class generation, (4) Flow configuration, (5) test coverage validation, and (6) deployment pre-check. The delivery lead reviews the task breakdown, approves the Blueprint, and starts a Run. Leads and specialists execute each task in an isolated Execution Node.
+
+## Required access
+
+- **Synapse role:** Project Member or higher to view Blueprints; Project Manager or higher to create, edit, and approve
+- **Salesforce connection:** An active Salesforce org connection is required for metadata-aware Blueprint generation
+- **POD membership:** For Blueprints executed inside a POD, the user must be a member of that POD
+
+## Governance notes
+
+Blueprints enforce a mandatory approval step before execution begins. A Blueprint cannot transition to a Run until at least one designated approver marks it approved. If Blueprint content changes after approval, approval is revoked and the review cycle restarts. Every Blueprint carries a full audit trail: who created it, who edited it, who approved it, and when each action occurred.
+
+---
+
+## Blueprint anatomy
+
+A Blueprint contains the following elements:
+
+| Element | Purpose |
+|---|---|
+| Phases | Logical groupings of related tasks (e.g., Analysis, Design, Build, Validate) |
+| Tasks | Individual units of work with title, description, assignee, estimated effort, and status |
+| Dependencies | Ordering constraints — task B cannot start until task A is done |
+| Risk assessments | RAID-linked risk flags surfaced from the RAID Log |
+| Specialist assignments | Which Salesforce-specialist lead or specialist handles each task |
+| Approval gates | Human review checkpoints that block progression to the next phase |
+
+## Creating a Blueprint
+
+### From a Jira Signal
+
+1. When Jira Autopilot classifies an incoming Jira issue, it proposes a Blueprint draft.
+2. Review the proposed task breakdown in the Blueprint editor.
+3. Adjust phases, task assignments, or risk flags as needed.
+4. Assign approvers and submit for approval.
+5. Once approved, start a Run.
+
+### Manually
+
+1. Navigate to **Blueprints** in the left sidebar.
+2. Click **New Blueprint**.
+3. Define the Blueprint name and objective.
+4. Add phases and tasks, set dependencies, and assign leads and specialists.
+5. Submit for approval before execution.
+
+## Task management
+
+Each Blueprint task includes:
+
+- **Title and description** — what the specialist must deliver
+- **Assignee** — which Salesforce-specialist lead or specialist handles this task
+- **Status** — Not Started, In Progress, Review, Done
+- **Dependencies** — which tasks must complete before this one can start
+- **Estimated effort** — hours or story points
+
+## Execution
+
+When a Blueprint is approved and a Run starts, leads and specialists execute Blueprint tasks in isolated Execution Nodes. Progress is visible in real time through Nexus. Each task output passes through the Sentinel quality pipeline before it is marked complete.
+
+```text
+Blueprint approved
+   → Run started
+   → Tasks dispatched to leads and specialists in Execution Nodes
+   → Sentinel gates validate each task output
+   → Human approval at gated phase transitions
+   → Run complete, artifacts available for review
+```
+
+## Blueprint templates
+
+Common Salesforce delivery patterns are available as Blueprint starters:
+
+- **Salesforce metadata deploy** — analysis, build, test, deploy phases
+- **Apex automation** — design, implementation, test coverage, review phases
+- **Integration setup** — credential scoping, endpoint configuration, mapping, validation phases
+- **Data migration** — source analysis, mapping, transformation, reconciliation phases
+
+Select a template when creating a Blueprint to pre-populate standard phases and tasks. All templates require review and approval before execution.
+
+## Related pages
+
+- [Signals](/core-concepts/signals) — what triggers Blueprint creation
+- [Runs](/runs) — the observable execution of an approved Blueprint
+- [Jira Autopilot](/autopilot) — how Jira issues become Blueprints
+- [Sentinel quality pipeline](/security-governance/approval-gates) — how Blueprint task outputs are validated

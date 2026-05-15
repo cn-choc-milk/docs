@@ -1,0 +1,85 @@
+---
+title: "Signals"
+description: "A Signal is a traceable event that starts or influences Salesforce delivery work in Synapse — most commonly a Jira issue classified by Jira Autopilot."
+audience: "Salesforce developers, architects, delivery leads, Jira admins"
+flagship_path: "jira-to-run"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+A Signal is a traceable event that starts or influences delivery work in Synapse. Signals are the entry point to the Jira-to-Run flagship path. The most common Signal source is a Jira issue classified by Jira Autopilot, but Signals can also come from scheduled triggers, manual requests, or external webhooks.
+
+When a Jira issue becomes a Signal, it begins the governed delivery chain: Signal → Blueprint → approved Run → Jira update.
+
+## When to use it
+
+Every Salesforce delivery workflow that originates outside Synapse — in Jira, in a stakeholder request, or in a scheduled task — enters Synapse as a Signal. Use Signals when you want:
+
+- Jira issues to automatically trigger Blueprint creation (Jira-to-Run path)
+- Requirements gathered during discovery to drive Blueprint content
+- Scheduled governance workflows to start Runs automatically
+
+## Salesforce delivery example
+
+A Salesforce team tracks delivery work in Jira. An incoming Jira issue is filed: "CPQ quoting flow — add tiered pricing logic." Jira Autopilot reads the issue, classifies it as a Salesforce delivery Signal, evaluates it against the project's routing rules, and creates a Blueprint draft. The Blueprint inherits the Jira issue title, description, and linked acceptance criteria. When the Run completes, Synapse posts a comment back to the original Jira issue with the Run summary and artifact links.
+
+## Required access
+
+- **Synapse role:** Project Member or higher to view Signals; Project Manager or higher to configure routing rules
+- **Jira integration:** Jira must be connected via Settings > Integrations before Jira-to-Run Signals are available
+- **Jira Autopilot:** Must be enabled on the target Jira project for automatic Signal classification
+
+## Governance notes
+
+Signals do not trigger automatic execution. A Signal creates a Blueprint draft. The Blueprint must be reviewed and explicitly approved before a Run starts. This ensures that no Jira issue — regardless of how it is classified — results in untriggered Salesforce changes. Every Signal is logged with its source, classification decision, and routing outcome.
+
+---
+
+## Signal sources
+
+| Source | How it becomes a Signal | Configuration required |
+|---|---|---|
+| Jira issue | Jira Autopilot classifies the issue against routing rules | Jira integration + Autopilot routing rules |
+| Manual request | User creates a Blueprint directly and designates it as Signal-originated | None |
+| Scheduled trigger | A configured schedule fires at the defined interval | Scheduled Workflows configuration |
+| External webhook | Incoming event from an external system triggers Blueprint creation | Webhook endpoint configuration |
+
+## From Signal to Blueprint: the discovery pipeline
+
+Before a Signal becomes a Blueprint, Synapse can enrich it with discovery inputs:
+
+1. **Gather requirements** — Use Spec Explorer to create structured specifications from the Signal's description.
+2. **Analyze existing state** — The Metadata Intelligence Engine runs impact analysis on the org's current metadata, surfacing dependencies and risk flags.
+3. **Define scope** — Group specifications into phases and tasks. Each spec becomes a Blueprint task.
+4. **From Signal to Blueprint** — Click **Create Blueprint** from a Signal to generate the delivery plan. The Blueprint inherits Signal context: Jira issue, linked specs, and MIE analysis findings.
+
+```text
+Signal (Jira issue, schedule, or request)
+   → Spec Explorer captures requirements
+   → MIE analysis surfaces dependencies and risks
+   → Blueprint created from Signal context
+   → Blueprint approved
+   → Run started
+```
+
+## Connecting Jira for Signal classification
+
+1. Navigate to **Settings > Integrations > Jira**.
+2. Authorize the Jira OAuth connection.
+3. Select the Jira project to monitor.
+4. Configure Jira Autopilot routing rules — define which issue types, labels, or components are classified as Salesforce delivery Signals.
+5. Save. Incoming issues matching the routing rules will generate Blueprint drafts automatically.
+
+## Viewing Signals
+
+Navigate to **Signals** in the left sidebar to see all active and historical Signals, their classification decisions, and linked Blueprints. Filter by source (Jira, scheduled, manual) or status (pending Blueprint, Blueprint in progress, Run active, Run complete).
+
+## Related pages
+
+- [Jira Autopilot](/autopilot) — the classification engine for Jira Signals
+- [Blueprints](/core-concepts/blueprints) — what a Signal creates
+- [Runs](/runs) — the execution that follows an approved Blueprint
+- [Scheduled Workflows](/scheduled-workflows) — recurring Signal sources

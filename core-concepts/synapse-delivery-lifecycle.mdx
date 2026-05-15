@@ -1,0 +1,102 @@
+---
+title: "Synapse Delivery Lifecycle"
+description: "The Signal-to-Run lifecycle: how Synapse turns a traceable event into governed, observable Salesforce delivery work."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+The Synapse delivery lifecycle is the end-to-end path a piece of Salesforce delivery work follows — from the moment a Signal is received to the moment a Run completes and results are visible in Nexus. Every feature, fix, and change request moves through the same four stages: Signal, Blueprint, Run, and Nexus.
+
+This page describes the lifecycle as a concept. For step-by-step walkthroughs, see [Jira to Run](/getting-started/jira-to-run) and the Project to POD quickstart.
+
+## When to use it
+
+Read this page when you want to understand how the two flagship paths fit together, why each stage exists, and what governance checkpoints apply at each transition. It is the reference model for architects evaluating Synapse for enterprise Salesforce delivery.
+
+## Salesforce delivery example
+
+A Salesforce architect opens a Jira issue: "Add Opportunity scoring field to Account layout." Jira Autopilot reads the issue, classifies it as a metadata change requiring a custom field plus page layout update, and creates a Blueprint. The architect reviews the Blueprint, approves it, and a Run begins in an isolated sandbox. FORGE builds the field and layout change, SENTINEL validates it against Salesforce governor limits, and the results appear in Nexus alongside a link back to the originating Jira issue. No production org was touched until the architect approved the next gate.
+
+## The Four Stages
+
+### Stage 1 — Signal
+
+A Signal is a traceable event that starts or influences delivery work. Signals are not text prompts. They carry structured context about what changed, who requested it, and in what Salesforce delivery environment it matters.
+
+**Signal sources supported at launch:**
+
+- **Jira issues** — Jira Autopilot reads new or updated issues and classifies them as delivery work. The issue becomes the Signal.
+- **Scheduled triggers** — Recurring Salesforce delivery governance tasks fire on a schedule. Each recurrence is a Signal.
+- **Manual creation** — A user creates a Blueprint directly inside Synapse. The creation event is the Signal.
+
+A Signal does not automatically start work. It moves to the Blueprint stage, where a human reviews and approves the delivery plan before any execution begins. Speed is in the classification. Control is in the approval gate.
+
+### Stage 2 — Blueprint
+
+A Blueprint is a structured delivery plan generated from a Signal. It contains tasks, specialist assignments, dependency relationships, approval gates, and risk flags.
+
+Blueprints are not generated and immediately executed. They follow a deliberate two-step model:
+
+1. **Generate** — Synapse produces a Blueprint from the Signal context. Metadata-aware analysis shapes the task breakdown. For a Jira issue describing a new custom object, the Blueprint will include field creation, page layout, permission set, and deployment validation tasks — automatically, without the architect manually decomposing each step.
+2. **Approve** — A human reviewer reads the Blueprint, adjusts tasks if needed, and explicitly approves it. No work begins until the Blueprint is approved. At higher governance tiers, approval requires a second reviewer.
+
+The Blueprint is the contract between intent and execution. It is reviewable, editable before approval, and auditable after the fact. The engineering record that backs a Blueprint is the `action_plans` table, but in every user-facing context it is called a Blueprint.
+
+### Stage 3 — Run
+
+A Run is the live, observable execution instance of an approved Blueprint. When a user approves a Blueprint and triggers execution, a Run is created. Each Run:
+
+- Executes inside an isolated Execution Node (a sandboxed environment; never your production or UAT org by default)
+- Dispatches tasks to Salesforce-specialist leads and specialists — AXIOM for architecture analysis, FORGE for component build, SENTINEL for governance validation, RELAY for communications, and others as assigned
+- Produces artifacts: source code, deployment results, test reports, sandbox branch commits
+- Records every state transition for audit
+
+Runs are observable in real time. You can watch task progress, read specialist output, and review artifacts as they are produced. A Run does not silently do things — every action is logged, and gated transitions require human approval.
+
+**Run states** follow a defined lifecycle from `queued` through `completed`. See [Run Lifecycle](/runs/lifecycle) for the full state machine and who can move each transition.
+
+If a specialist's code work succeeds but the Salesforce deployment step fails, the Run enters `deploy_failed` state — a distinct outcome that preserves the specialist's work while surfacing the deployment error for remediation. No work is lost.
+
+### Stage 4 — Nexus
+
+Nexus is the command layer where humans review, approve, and intervene. It is not a monitoring dashboard alone — it is the surface where governance happens.
+
+In Nexus, an architect or delivery lead can:
+
+- Review gated actions before execution proceeds
+- Approve or reject a Blueprint at the approval gate
+- See all active Runs and their current state
+- Drill into any Run's artifact trail, specialist output, and governance decisions
+- Intervene to pause, resume, or cancel a Run
+
+Nexus ensures that the speed benefits of specialist coordination never come at the cost of visibility. Every automated step that touches your Salesforce environment is visible, auditable, and interruptible.
+
+## How the Two Paths Use This Lifecycle
+
+**Jira to Run** — The Signal is a Jira issue. Jira Autopilot classifies it and generates the Blueprint. The architect approves in Nexus. The Run executes in a sandbox. Jira receives a comment when the Run completes.
+
+**Project to POD** — The Signal is a user assigning delivery work to a POD (a project-linked Salesforce delivery team). The Blueprint is composed from that assignment. The user monitors active Runs in Nexus, approves gated actions, and reviews artifacts when the Run completes.
+
+Both paths share the same lifecycle. The difference is the Signal source and the team configuration at the Blueprint stage.
+
+## Required access
+
+- Synapse workspace with at least one connected Salesforce org
+- Jira integration configured (for the Jira to Run path)
+- Blueprint Approver role or higher to move a Blueprint from approved to Run
+
+## Governance notes
+
+Every stage transition in the delivery lifecycle includes a human decision point or an audit record:
+
+- Signal to Blueprint: the classification is logged with source context, timestamp, and the Signal ID
+- Blueprint approval: recorded with reviewer identity, timestamp, and any task edits made before approval
+- Run to completion: full execution log, specialist outputs, artifact hashes, and gate outcomes are persisted and non-deletable by default
+- Deploy failure: surfaces as `deploy_failed` state — the specialist's work is preserved and the deployment error is reported with diagnostic context
+
+Synapse does not route approved Blueprints directly to production. Production deployment requires an explicit, separately gated action with approval at the production governance tier.
