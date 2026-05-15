@@ -30,7 +30,7 @@
             "group": "Core Features",
             "pages": [
               "features/ai-agents",
-              "features/action-plans",
+              "features/blueprints",
               "features/metadata-intelligence",
               "features/impact-analysis",
               "features/workflow-builder"
@@ -76,7 +76,7 @@
           {
             "group": "Endpoints",
             "pages": [
-              "api/action-plans",
+              "api/blueprints",
               "api/projects",
               "api/metadata",
               "api/agents",
@@ -86,5 +86,9 @@
         ]
       }
     ]
-  }
+  },
+  "redirects": [
+    { "source": "/features/action-plans", "destination": "/features/blueprints", "permanent": true },
+    { "source": "/api/action-plans", "destination": "/api/blueprints", "permanent": true }
+  ]
 }
