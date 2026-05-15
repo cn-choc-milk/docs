@@ -1,0 +1,210 @@
+---
+title: "Jira to Run: Quickstart"
+description: "Walk a Jira issue through Autopilot classification, Blueprint approval, and sandbox Run from start to finish."
+audience: "architect"
+flagship_path: "jira-to-run"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This quickstart walks you through the complete Jira to Run path: a Jira issue enters Synapse through Jira Autopilot, is classified into a governed Blueprint, approved by you, and executed as a Run in an isolated sandbox. When the Run completes, Synapse posts the result back to the originating Jira issue.
+
+For a conceptual overview of all four stages, see [Synapse Delivery Lifecycle](/core-concepts/synapse-delivery-lifecycle).
+
+## When to use it
+
+Use this guide when:
+
+- You are connecting Synapse to Jira for the first time and want to see an end-to-end governed delivery flow
+- You want to understand what happens between a Jira issue being created and work appearing in your sandbox
+- You are preparing a live demo of the Jira to Run path
+
+## Salesforce delivery example
+
+You have a Jira issue: **"SYN-42 — Add Opportunity scoring field (Number, 0–100) to Account layout"**. By the end of this quickstart, that issue will have triggered a classified Blueprint, passed through your approval gate, executed in a sandboxed environment with specialist work, and received a Jira comment with the Run result.
+
+## Required access
+
+- Synapse workspace with Admin or Delivery Lead role
+- Jira integration connected (see [Jira Integration](/integrations/jira))
+- At least one Salesforce sandbox org connected to Synapse
+- Blueprint Approver permission
+
+---
+
+## Step 1 — Confirm Jira integration is connected
+
+Before a Jira issue can become a Signal, your Jira project must be connected to Synapse.
+
+1. Open Synapse and navigate to **Settings > Integrations**.
+2. Confirm your Jira workspace appears under Connected sources with a green status indicator.
+3. Confirm the project containing your demo issue (e.g., **SYN**) is listed under monitored projects.
+
+If Jira is not yet connected, follow the [Jira Integration guide](/integrations/jira) before continuing.
+
+---
+
+## Step 2 — Create or locate the Jira issue
+
+Jira Autopilot reads issues when they are created or when their status changes to a monitored state. For this quickstart, use or create an issue with:
+
+- **Summary:** `Add Opportunity scoring field (Number, 0-100) to Account layout`
+- **Issue type:** Story or Task (both are classified by Autopilot)
+- **Project:** The project you confirmed in Step 1
+
+Jira Autopilot classifies the issue when it enters a monitored status column in your board. The default monitored status is **In Progress**. Move the issue to **In Progress** to trigger classification.
+
+> **Note on timing:** Classification is near-real-time via webhook. Expect the Blueprint to appear in Synapse within 30 seconds of the status change. If it does not appear, check the [Autopilot routing rules](/autopilot/routing-rules) for your project.
+
+---
+
+## Step 3 — Review the classification in Jira Autopilot
+
+After classification, the issue appears in Synapse under **Jira Autopilot > Pending Blueprints**.
+
+1. Navigate to **Jira Autopilot** in the left sidebar.
+2. Find **SYN-42** in the list. You will see:
+   - The classified issue type (e.g., *Metadata change — custom field + layout*)
+   - The draft Blueprint name generated from the issue summary
+   - The specialist roster Autopilot has proposed (typically AXIOM for analysis, FORGE for build, SENTINEL for validation)
+
+3. Click the issue to open the Blueprint preview.
+
+**What Autopilot classifies:**
+Autopilot reads the issue summary and description, identifies the Salesforce component types involved (here: `CustomField`, `Layout`), and generates a Blueprint with the appropriate task breakdown. Classification does not start any execution. It is a proposed plan awaiting your review.
+
+---
+
+## Step 4 — Review and approve the Blueprint
+
+The Blueprint preview shows the full delivery plan: tasks, dependencies, specialist assignments, and any risk flags SENTINEL surfaced during preflight validation.
+
+{/* Screenshot placeholder: Blueprint approval panel showing SYN-42 tasks, specialist assignments, and approval button */}
+{/* Visual asset needed: screenshot of Blueprint approval gate with preflight SENTINEL results */}
+
+For **SYN-42**, a typical Blueprint includes:
+
+| Task | Specialist | Phase |
+|------|-----------|-------|
+| Analyze Account object dependencies | AXIOM | Analysis |
+| Create Opportunity__Scoring__c custom field | FORGE | Build |
+| Update Account layout for scoring field | FORGE | Build |
+| Deploy to sandbox and run validation | SENTINEL | Validation |
+
+Review each task. If you need to adjust the task list, you can add, edit, or remove tasks before approving. The Blueprint is editable until the moment you click **Approve**.
+
+When you are satisfied:
+
+1. Click **Approve Blueprint**.
+2. A confirmation dialog shows the governance tier and sandbox target. Confirm.
+
+The Blueprint is now locked. No further edits are possible after approval. This is intentional — the audit trail for a Run traces back to the exact Blueprint that was approved.
+
+---
+
+## Step 5 — Monitor the Run in Nexus
+
+After approval, Synapse creates a Run and begins dispatching tasks. Navigate to **Nexus** to watch the Run in real time.
+
+You will see:
+
+- **Run status** — starts as `queued`, moves to `in-progress` as tasks begin
+- **Task cards** — one per Blueprint task, showing the assigned specialist and current state
+- **Specialist output** — streaming log of what each specialist is doing
+- **Artifacts** — as work completes, artifacts (source files, deployment results, test reports) appear in the artifacts panel
+
+The Run executes inside an isolated Execution Node. Your production org is not touched. The sandbox branch receives commits as each task completes.
+
+**Governance gate during execution:**
+If SENTINEL's validation gate fails preflight (syntax error, governor limit violation), the Run moves to `awaiting-approval` and pauses for your review. You will receive a notification. Review the finding in Nexus and choose to approve the remediated version or reject and close the Run.
+
+---
+
+## Step 6 — Review the Run result
+
+When all tasks complete, the Run transitions to `completed` (or `deploy_failed` if the specialist work succeeded but the Salesforce deployment step encountered an error — see [Run Troubleshooting](/runs/troubleshooting) for that case).
+
+In Nexus, the completed Run shows:
+
+- All artifacts: source file diff, deployment result, test coverage report
+- Full execution log per specialist
+- Total elapsed time and governance decisions made
+
+---
+
+## Step 7 — Confirm the Jira comment-back
+
+Synapse automatically posts a comment to the originating Jira issue when the Run completes. Return to **SYN-42** in Jira and confirm the comment. It will include:
+
+- Run outcome (completed / deploy_failed / failed)
+- Link to the Run in Nexus for full audit detail
+- Summary of artifacts produced
+
+This closes the loop between the Jira issue and the governed delivery work it triggered.
+
+---
+
+## What to do next
+
+- See [Run Lifecycle](/runs/lifecycle) for the full set of Run states and who can move each transition
+- See [Jira Autopilot](/autopilot/index) to configure which issue types and projects trigger classification
+- See [Routing Rules](/autopilot/routing-rules) to customize how Autopilot classifies and routes issues
+- See [Viewing Logs and Artifacts](/runs/viewing-logs-and-artifacts) for how to download Run artifacts
+
+## Governance notes
+
+Every action in the Jira to Run path is logged:
+
+- Issue classification: timestamp, issue ID, classified component types, specialist roster proposed
+- Blueprint approval: reviewer identity, timestamp, task edits made before approval
+- Run execution: full specialist output, gate outcomes, artifact hashes
+- Jira comment-back: recorded as a delivery event tied to the Run ID
+
+Runs do not execute against production orgs without a separately configured production governance tier that requires explicit approval. All sandbox runs are isolated; no changes persist outside the sandbox environment unless you explicitly promote them.
+
+---
+
+## Platform orientation
+
+New to Synapse? This section covers the platform layout and key terms that appear throughout the Jira to Run path.
+
+### Platform layout
+
+Synapse uses a multi-panel layout with a persistent left sidebar, tabbed workspace, and a Nexus assistant panel on the right.
+
+| Surface | What it is |
+|---|---|
+| **Left sidebar** | Main navigation: Projects, Blueprints, Runs, Integrations, Nexus, Settings |
+| **Workspace tabs** | Open multiple pages simultaneously; right-click a tab for close options |
+| **Nexus assistant panel** | The specialist panel — engage leads and specialists, ask questions, get impact analysis |
+| **Nexus dashboard** | Command layer for approvals, monitoring, run status, and risk visibility |
+
+Press `Cmd+K` to open global search across projects, Blueprints, Runs, and documentation.
+
+Press `Cmd+/` to open the keyboard shortcuts reference.
+
+### Key terms
+
+| Term | Meaning |
+|---|---|
+| **Signal** | Traceable event that starts delivery work — a Jira issue, a scheduled trigger, or a manual request |
+| **Blueprint** | Structured delivery plan with tasks, phases, approvals, and specialist assignments |
+| **Run** | Live, observable execution instance of an approved Blueprint |
+| **Nexus** | The command layer — approvals, monitoring, run status, risk visibility |
+| **Execution Node** | Isolated runtime environment where specialist work happens |
+| **Leads and specialists** | Role-specific Salesforce agents — AXIOM (Architecture Lead), FORGE (Build Specialist), SYNTH (Data Modeling Specialist), CURATOR (Code Reviewer), GUARDIAN (Governance Specialist), RELAY (Integration Specialist), SENTINEL (Quality Pipeline) |
+
+### The two flagship delivery paths
+
+Every Synapse workflow maps to one of two paths.
+
+**Path 1 — Jira to Run:**
+Jira issue → Jira Autopilot classification → Blueprint → approval → sandbox Run → Jira update
+
+**Path 2 — Project to POD:**
+Project → POD configuration → Blueprint → approval → Run → Nexus → artifacts
+
+All documentation on this site is organized around one or both of these paths. See [Project to POD quickstart](/getting-started/project-to-pod) for the second path.

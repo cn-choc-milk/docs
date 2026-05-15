@@ -1,0 +1,199 @@
+---
+title: "Project to POD: Quickstart"
+description: "Select a project, configure a POD, assign Salesforce delivery work, monitor progress in Nexus, and review artifacts."
+audience: "architect"
+flagship_path: "project-to-pod"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This quickstart walks you through the complete Project to POD path: you select a project, configure a POD as its project-linked Salesforce delivery team, assign work as Blueprint tasks, monitor live execution through Nexus, approve any gated actions, and review the artifacts and results when the Run completes.
+
+For an overview of how the Project to POD path relates to the full Signal-to-Run lifecycle, see [Synapse Delivery Lifecycle](/core-concepts/synapse-delivery-lifecycle).
+
+## When to use it
+
+Use this guide when:
+
+- You are setting up Salesforce delivery work for a specific project and want a dedicated delivery team rather than reacting to inbound Jira signals
+- You need to assign structured, multi-task delivery work to specialist leads and specialists
+- You want a governed, observable delivery flow with approval gates and full audit trail under a single project context
+
+## Salesforce delivery example
+
+You have a project named **Customer 360 — Phase 2**. The next milestone is a package of metadata changes: a new Lightning component on the Account page, a set of custom fields for opportunity tracking, and a deployment to your staging org. By the end of this quickstart, that work will be captured in a Blueprint, executed by the POD's specialist roster in an isolated sandbox, gated by SENTINEL validation, and returned to you as artifacts you can review and promote.
+
+## Required access
+
+- Synapse workspace with Admin or Delivery Lead role
+- At least one project created in Synapse
+- At least one Salesforce org connected to Synapse
+- Blueprint Approver permission
+
+---
+
+## Before you begin: create a project
+
+A project is the top-level organizational unit in Synapse. It holds Blueprints, Runs, RAID Logs, connected Salesforce orgs, and POD configurations. If you do not yet have a project, create one now.
+
+1. Navigate to **Projects** from the left sidebar.
+2. Click **New Project**.
+3. Fill in the project name and description.
+4. Optionally connect a Salesforce org — or connect it later via **Project Settings > Integrations**.
+5. Click **Create**.
+
+Each project dashboard includes:
+
+| Section | Contents |
+|---|---|
+| **Blueprints** | All delivery plans — draft, in review, approved, and archived |
+| **Runs** | Active and historical execution records with status and artifacts |
+| **PODs** | Project-linked Salesforce delivery teams |
+| **RAID Log** | Risks, assumptions, issues, and dependencies for this project |
+| **Signals** | Incoming Jira issues and other Signal sources linked to this project |
+| **Steering Reports** | Auto-generated executive dashboards |
+
+Create a project for each distinct Salesforce delivery engagement or workstream. A project is the right boundary when the work has its own team, timeline, Salesforce org connection, and governance requirements.
+
+---
+
+## Step 1 — Open the project
+
+1. In the Synapse left sidebar, navigate to **Projects**.
+2. Select the project you want to work on — in this example, **Customer 360 — Phase 2**.
+
+The project detail page shows the task board, any existing Blueprints, and the POD configuration panel.
+
+---
+
+## Step 2 — Create and configure a POD
+
+A POD is a project-linked Salesforce delivery team. Each project can have one active POD. The POD holds the specialist roster, scope settings, and governance tier for all delivery Runs under that project.
+
+1. On the project detail page, open the **POD** tab or click **Configure POD**.
+2. If no POD exists yet, click **Create POD**.
+3. Configure the POD:
+   - **Name** — a short delivery team label, e.g., *C360 Phase 2 Delivery*.
+   - **Specialist roster** — select which leads and specialists handle work for this project. See [POD configuration](/pods/create-and-configure) for the full roster and role descriptions. For this example, the recommended roster is AXIOM (architecture), FORGE (build), and SENTINEL (validation).
+   - **Governance tier** — choose the tier that matches your target Salesforce environment. For a staging org, **Standard** tier enforces blocking Sentinel validation and requires all local tests to pass before delivery. See governance tier details in [Create and Configure a POD](/pods/create-and-configure).
+   - **Connected org** — select the Salesforce sandbox or scratch org this POD targets.
+4. Click **Save POD configuration**.
+
+{/* Screenshot placeholder: POD configuration panel showing roster selection, governance tier dropdown, and connected org field */}
+
+The POD is now configured and ready to receive work.
+
+---
+
+## Step 3 — Author a Blueprint and assign work
+
+A Blueprint is the governed delivery plan the POD will execute. You author it from the project task board.
+
+1. On the project task board, add the tasks for this milestone. For **Customer 360 — Phase 2**:
+   - Build Lightning component for Account page
+   - Add custom fields for opportunity tracking (3 fields)
+   - Update page layout
+   - Deploy to staging org and run validation
+
+2. Select the tasks you want to include in this delivery run and click **Create Blueprint from selection**.
+
+3. The Blueprint composer opens. Review:
+   - **Task breakdown** — confirm tasks are correctly sequenced with dependencies set
+   - **Specialist assignments** — Synapse proposes assignments based on task type; adjust if needed
+   - **Risk flags** — SENTINEL runs a preflight scan and surfaces any blockers or warnings before you approve
+
+4. When you are satisfied with the Blueprint, click **Approve Blueprint**.
+
+The Blueprint is locked at the moment you approve. The audit trail for the Run traces back to this exact approved Blueprint.
+
+> If you prefer to let the system generate the Blueprint from a description rather than composing it manually from the task board, see [Assigning work to a POD](/pods/assign-work).
+
+---
+
+## Step 4 — Start the Run
+
+After Blueprint approval, click **Launch Run** on the Blueprint detail page.
+
+Synapse dispatches the Blueprint to the POD and creates a Run. The Run begins queued and moves to `in-progress` as the execution sandbox is allocated and the first tasks are dispatched to their assigned specialists.
+
+---
+
+## Step 5 — Monitor progress in Nexus
+
+Navigate to **Nexus** in the left sidebar to watch the Run in real time.
+
+The Run view shows:
+
+- **Run status** — `queued` → `in-progress` → `awaiting-approval` (if a gate triggers) → `completed`
+- **Task cards** — one per Blueprint task, showing the assigned specialist, current state, and streaming log
+- **Approval queue** — gated actions that require your explicit approval before the Run can proceed
+- **Artifacts panel** — source files, deployment results, and test reports as each task completes
+
+The entire Run executes inside an isolated sandbox. Your connected Salesforce org is not touched until you explicitly promote changes.
+
+{/* Screenshot placeholder: Nexus Run view showing task cards, specialist activity, and approval queue */}
+
+---
+
+## Step 6 — Approve gated actions
+
+Depending on your governance tier and SENTINEL's validation findings, the Run may pause at one or more approval gates.
+
+**What triggers a gate:**
+
+- SENTINEL detects a syntax error, governor limit violation, or coverage shortfall
+- The governance tier requires human approval per task (Strict tier)
+- A task involves a deployment to a protected org
+
+When the Run enters `awaiting-approval`:
+
+1. Open the **Approval queue** in Nexus.
+2. Review the finding: SENTINEL's explanation, the affected code or metadata, and the proposed remediation.
+3. Choose **Approve** to allow the Run to proceed, or **Reject** to stop the Run and close it.
+
+Approved decisions and rejections are both recorded in the audit trail. You can download the full event log from the Run detail page at any time.
+
+---
+
+## Step 7 — Review artifacts and results
+
+When the Run completes, the results panel shows:
+
+- All artifacts produced: source file diff, deployment manifest, test coverage report, and any SENTINEL validation reports
+- Full execution log per specialist, timestamped and searchable
+- Total elapsed time, governance decisions made, and the final delivery status
+
+**Delivery statuses:**
+
+| Status | Meaning |
+|--------|---------|
+| `completed` | All tasks finished and all gates passed |
+| `deploy_failed` | Specialist work succeeded but the Salesforce deployment step encountered an error |
+| `failed` | A task failed and the Run could not recover |
+
+For `deploy_failed`, see [Run Troubleshooting](/runs/troubleshooting).
+
+---
+
+## What to do next
+
+- [PODs overview](/pods/index) — understand the full POD model and how PODs relate to projects
+- [Create and configure a POD](/pods/create-and-configure) — specialist roster details, governance tiers, and scope settings
+- [Assign work to a POD](/pods/assign-work) — deeper guide to Blueprint authoring from the task board
+- [Nexus monitoring](/pods/mission-control) — approval queue, artifact inspection, and Run intervention
+- [Sandboxes](/sandboxes/index) — how Run work executes in isolated environments
+
+## Governance notes
+
+Every action in the Project to POD path is logged in the Run audit trail:
+
+- POD configuration: specialist roster, governance tier, connected org, configured-by identity and timestamp
+- Blueprint authoring: task edits, specialist assignment changes, and SENTINEL preflight results
+- Blueprint approval: approver identity, timestamp, exact Blueprint version approved
+- Run execution: full specialist output per task, gate triggers and resolutions, artifact hashes
+- Approval decisions: reviewer identity, finding reviewed, outcome, and timestamp
+
+No changes reach your Salesforce org until specialists complete their work and you explicitly promote it. Runs in a development or staging governance tier deploy to the connected sandbox or scratch org scope only. Production delivery requires the production-tier configuration (`Strict`), which enforces explicit per-task human approval before each task is dispatched and blocks deployment on any Sentinel finding.
