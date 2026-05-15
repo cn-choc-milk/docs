@@ -1,0 +1,178 @@
+---
+title: 'Use Synapse tools in Claude Desktop and Cursor IDE'
+description: 'Connect Synapse to Claude Desktop or Cursor IDE via the MCP server to access 22+ orchestration tools directly inside your AI assistant.'
+---
+
+The Synapse MCP server exposes your workspace's orchestration capabilities as tools that Claude Desktop and Cursor can call directly. Once connected, your AI assistant can create action plans, manage tasks, monitor session progress, interact with agents, and access generated artifacts — all without leaving the IDE. The server communicates over stdio, which means the IDE launches it automatically when it starts; you do not need to keep a separate terminal window open.
+
+## What the MCP server provides
+
+The server registers 22+ tools across six categories:
+
+| Category | Tools | What you can do |
+|----------|-------|----------------|
+| Planning | 3 | Create, review, and approve orchestration plans |
+| Task management | 3 | Create tasks, update status, retrieve task details |
+| Monitoring | 3 | Track session progress, read notifications, pause sessions |
+| Agents | 3 | Assign agents to tasks, query specialized agents, view activity logs |
+| Artifacts | 2 | Retrieve and update generated code and deliverables |
+| File operations | 6 | Read local files and export session data |
+
+## Before you begin
+
+You need the following before configuring the MCP server:
+
+- **Node.js 18 or later** installed and available in your system PATH.
+- **A running Synapse API server** accessible on your local network.
+- **Claude Desktop or Cursor IDE** installed.
+
+## Build the MCP server
+
+The MCP server is included in the Synapse codebase but must be compiled before your IDE can launch it.
+
+<Steps>
+  <Step title="Install dependencies">
+    From your Synapse project directory, run:
+
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Build the server">
+    ```bash
+    npm run mcp:build
+    ```
+
+    This compiles the TypeScript source to `dist/mcp/`. You can verify the output with:
+
+    ```bash
+    ls dist/mcp/
+    ```
+
+    You should see `stdio.js` — this is the entry point your IDE will call.
+  </Step>
+  <Step title="Verify the API server is reachable">
+    ```bash
+    curl http://localhost:8082/api/v1/health
+    ```
+
+    The API server must be running for the MCP tools to work. If this returns an error, confirm the server is started.
+  </Step>
+</Steps>
+
+## Configure your IDE
+
+Add the server configuration to your IDE, then restart the IDE. The IDE launches the MCP server automatically on startup.
+
+<Tabs>
+  <Tab title="Claude Desktop">
+    Open the Claude Desktop configuration file for your operating system:
+
+    | OS | Configuration file path |
+    |----|------------------------|
+    | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+    | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+    | Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+    If the file does not exist, create it. Add the following, replacing `/path/to/synapse-architect-nexus` with the absolute path to your local Synapse repository:
+
+    <CodeGroup>
+    ```json macOS / Linux
+    {
+      "mcpServers": {
+        "synapse-orchestration": {
+          "command": "node",
+          "args": ["/path/to/synapse-architect-nexus/dist/mcp/stdio.js"],
+          "env": {
+            "API_BASE_URL": "http://localhost:8082"
+          }
+        }
+      }
+    }
+    ```
+
+    ```json Windows
+    {
+      "mcpServers": {
+        "synapse-orchestration": {
+          "command": "node",
+          "args": ["C:\\path\\to\\synapse-architect-nexus\\dist\\mcp\\stdio.js"],
+          "env": {
+            "API_BASE_URL": "http://localhost:8082"
+          }
+        }
+      }
+    }
+    ```
+    </CodeGroup>
+
+    After saving the file, **quit and relaunch Claude Desktop completely**. A partial restart is not enough for MCP server changes to take effect.
+
+    To confirm the server is connected, ask Claude: "What MCP servers are available?" or ask it to run the `verify_mcp_connection` tool.
+  </Tab>
+  <Tab title="Cursor IDE">
+    Create a `.cursor/mcp.json` file in your project root. This is the recommended approach because the configuration travels with the repository.
+
+    ```json
+    {
+      "servers": {
+        "synapse-orchestration": {
+          "command": "node",
+          "args": ["dist/mcp/stdio.js"],
+          "env": {
+            "API_BASE_URL": "http://localhost:8082",
+            "MCP_AUTH_ENABLED": "false"
+          }
+        }
+      }
+    }
+    ```
+
+    The path `dist/mcp/stdio.js` is relative to the project root where `.cursor/mcp.json` lives. If you are running the configuration from a different working directory, use an absolute path instead.
+
+    After saving, check the MCP status indicator in the Cursor status bar, or open the MCP panel to confirm tools are loaded.
+
+    <Note>
+    You can also add the server globally via **Cursor Settings → Features → Model Context Protocol** if you want it available across all projects.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Authentication
+
+By default, the MCP server runs without authentication (`MCP_AUTH_ENABLED=false`), which is appropriate for local development where access is restricted to your machine.
+
+When authentication is enabled, each tool call must include an `auth_token` (your Synapse API token) and a `tenant_id`. The server validates these on every request and enforces role-based access:
+
+| Role | Can do |
+|------|--------|
+| viewer | Read plans, tasks, artifacts, and session data |
+| member | Everything viewer can do, plus create tasks and plans |
+| editor | Everything member can do, plus approve plans and assign agents |
+| admin | Full access to all tools |
+
+To enable authentication, add the following to the `env` block in your IDE configuration:
+
+```json
+{
+  "MCP_AUTH_ENABLED": "true",
+  "MCP_REQUIRE_AUTH": "true"
+}
+```
+
+Contact your Synapse workspace administrator for the auth token and tenant ID values to use in your IDE config.
+
+<Warning>
+Do not commit authentication credentials to version control. Use environment variable references or keep the configuration file outside your repository when enabling authentication.
+</Warning>
+
+## Troubleshooting
+
+**The server does not appear in the IDE after configuration.**
+Check that the JSON in your configuration file is valid and that the path to `stdio.js` is correct and absolute. Restart the IDE completely after any configuration change.
+
+**Connection errors when using a tool.**
+Make sure the Synapse API server is running and reachable at the `API_BASE_URL` you configured. Run `curl http://localhost:8082/api/v1/health` to confirm. If the server is not running, start it before using the MCP tools.
+
+**Tools not loading after a code change.**
+Rebuild the server with `npm run mcp:build` and restart the IDE.

@@ -1,0 +1,138 @@
+---
+title: "Getting started: connect your org and build with Synapse"
+description: "Sign up for Synapse, connect your Salesforce org, create a project, and generate your first AI-powered action plan in under ten minutes."
+---
+
+Synapse is an AI-powered platform that turns natural language descriptions into production-ready Salesforce components and orchestrated action plans. This guide walks you through everything from creating your account to generating your first component — no prior setup required.
+
+## Sign up
+
+<Steps>
+  <Step title="Create your account">
+    Go to [synapse-architect.com](https://synapse-architect.com) and click **Get Started**. You can register with an email address and password, or sign in with Google, GitHub, or Salesforce OAuth.
+
+    <Note>
+      If your organization uses Salesforce OAuth for single sign-on, use that option so Synapse can pre-populate your org details during setup.
+    </Note>
+  </Step>
+  <Step title="Verify your email">
+    If you registered with email and password, check your inbox for a verification link. Click it before proceeding — some features are locked until your address is confirmed.
+  </Step>
+</Steps>
+
+## Connect your Salesforce org
+
+Before Synapse can generate or analyze anything, it needs read access to your org's metadata.
+
+<Steps>
+  <Step title="Open the Connections settings">
+    In the left navigation, go to **Settings → Connections**. You'll see a list of supported integrations.
+  </Step>
+  <Step title="Authorize your org">
+    Click **Connect Salesforce** and complete the OAuth 2.0 flow in the popup window. Synapse requests only the scopes it needs to read metadata — your credentials are never stored.
+  </Step>
+  <Step title="Wait for the initial metadata sync">
+    After authorization, Synapse ingests your org's metadata and builds a dependency graph. This usually takes one to three minutes. You can watch the progress bar on the Connections page.
+
+    <Warning>
+      Don't close the browser tab during the initial sync. If the sync is interrupted, go to **Settings → Connections** and click **Re-sync** to restart it.
+    </Warning>
+  </Step>
+</Steps>
+
+## Create a project
+
+Projects are the workspaces where your agents run, code is generated, and results are delivered.
+
+<Steps>
+  <Step title="Open the Projects view">
+    Click **Projects** in the left navigation, then click **New Project**.
+  </Step>
+  <Step title="Name and configure your project">
+    Give your project a descriptive name, select the Salesforce org you just connected, and optionally link a GitHub repository. Synapse pushes generated code to a feature branch in that repository.
+  </Step>
+  <Step title="Save the project">
+    Click **Create Project**. You'll land on the project dashboard, where your agents and action plans will appear.
+  </Step>
+</Steps>
+
+## Your first action plan
+
+An action plan is an AI-orchestrated sequence of agent tasks. You describe what you want to build in natural language, Synapse generates a step-by-step plan, and you execute it with one click.
+
+<Steps>
+  <Step title="Open the AI Builder">
+    Inside your project, click **AI Builder** in the top navigation bar.
+  </Step>
+  <Step title="Write your prompt">
+    Type a description of what you want to build. The more specific you are, the better the output.
+
+    Here's an example prompt to get you started:
+
+    ```text
+    Create a Lightning Web Component that displays a list of contacts
+    with their name, email, and phone number in a sortable data table.
+    Include a search bar that filters the list in real time.
+    ```
+
+    <Note>
+      Good prompts include the component type (LWC, Apex class, Flow), specific fields or objects involved, and any business logic rules. Vague prompts like "create a form" produce generic output.
+    </Note>
+  </Step>
+  <Step title="Generate the action plan">
+    Press **Ctrl+Enter** (or **Cmd+Enter** on Mac) to submit your prompt. Synapse analyzes your org's metadata and generates a multi-step action plan showing exactly what each agent will do.
+  </Step>
+  <Step title="Review and execute">
+    Review the proposed plan. If everything looks right, click **Execute**. Agents run in sequence, and you can follow their progress in real time. When they finish, Synapse pushes the generated files to a Git branch for your review.
+  </Step>
+  <Step title="Download or deploy your component">
+    Once generated, you can:
+
+    - **Download ZIP** — get all component files as a zip archive
+    - **Copy Code** — copy individual files to your clipboard
+    - **Push to Git** — the result is already on a branch if you linked a repository
+  </Step>
+</Steps>
+
+### Using the command palette
+
+Press **Ctrl+K** (or **Cmd+K** on Mac) from anywhere in the app to open the command palette. Use it to quickly jump between projects, run actions, or search documentation without leaving the keyboard.
+
+### Verify the API is reachable
+
+If you're integrating Synapse into a script or CI/CD pipeline, confirm the API is healthy before making authenticated requests:
+
+```bash
+curl https://api.synapse-architect.com/api/v1/health
+```
+
+A healthy response looks like this:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-11-01T12:00:00.000Z",
+  "version": "2.0.0"
+}
+```
+
+The health endpoint requires no authentication, so it's a safe first call to make when debugging connectivity issues.
+
+## Next steps
+
+You've connected your org, created a project, and run your first action plan. Here's where to go next:
+
+<CardGroup cols={2}>
+  <Card title="AI agents" icon="robot" href="/features/ai-agents">
+    Learn about AXIOM, FORGE, SYNTH, and the other specialized agents that power your action plans.
+  </Card>
+  <Card title="Action plans" icon="list-check" href="/features/action-plans">
+    Understand how multi-agent orchestration works and how to customize plan execution.
+  </Card>
+  <Card title="Metadata intelligence" icon="magnifying-glass" href="/features/metadata-intelligence">
+    Explore how Synapse builds a dependency graph from your org's metadata.
+  </Card>
+  <Card title="API reference" icon="code" href="/api/overview">
+    Integrate Synapse programmatically or build automation on top of the platform.
+  </Card>
+</CardGroup>

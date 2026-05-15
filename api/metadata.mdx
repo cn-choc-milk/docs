@@ -1,0 +1,400 @@
+---
+title: "Metadata Intelligence API — ingest, graph, and generate"
+description: "Ingest Salesforce metadata, explore dependency graphs, generate PRDs from org context, and produce Salesforce components via the Synapse API."
+---
+
+The Metadata Intelligence Engine (MIE) is the backbone of Synapse's understanding of your Salesforce org. You ingest metadata into MIE, which indexes it into a vector store and builds a dependency graph. From there, you can generate PRDs grounded in your actual org context, and invoke the AI generation endpoint to produce Salesforce components from a plain-language prompt.
+
+All endpoints require a JWT Bearer token in the `Authorization` header. The base URL is `https://api.synapse-architect.com/api`.
+
+---
+
+## Ingest Salesforce metadata
+
+**`POST /api/mie/ingest`**
+
+Triggers metadata ingestion from a Salesforce org (or other source) into the Metadata Intelligence Engine. The ingested documents are stored as vector embeddings for use in PRD generation and semantic search.
+
+<ParamField body="tenant_id" type="string" required>
+  Your tenant identifier.
+</ParamField>
+
+<ParamField body="project_id" type="string" required>
+  Project to associate the ingested metadata with.
+</ParamField>
+
+<ParamField body="source_type" type="string" default="salesforce">
+  Metadata source. One of `salesforce`, `github`, or `manual`.
+</ParamField>
+
+<ParamField body="metadata_types" type="array">
+  Salesforce metadata types to ingest. Defaults to `["CustomObject", "CustomField"]`. Supported values include `ApexClass`, `ApexTrigger`, `Flow`, `ValidationRule`, `WorkflowRule`, `PermissionSet`, `Profile`, `LightningComponent`, and `VisualforcePage`.
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Optional filters applied during ingestion.
+  <Expandable title="filters">
+    <ParamField body="namespace" type="string | null">Restrict ingestion to a specific managed package namespace. Pass `null` to include unmanaged components.</ParamField>
+  </Expandable>
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/mie/ingest" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "tenant-uuid",
+    "project_id": "proj-uuid",
+    "source_type": "salesforce",
+    "metadata_types": ["CustomObject", "ApexClass", "Flow"],
+    "filters": { "namespace": null }
+  }'
+```
+
+```json Example response
+{
+  "success": true,
+  "document_count": 142,
+  "tenant_id": "tenant-uuid",
+  "project_id": "proj-uuid",
+  "documents": [
+    {
+      "id": "doc-uuid",
+      "type": "CustomObject",
+      "api_name": "Account",
+      "label": "Account",
+      "source": "salesforce",
+      "created_at": "2026-05-14T10:00:00Z"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+<ResponseField name="success" type="boolean">Whether ingestion completed without errors.</ResponseField>
+<ResponseField name="document_count" type="number">Total number of documents indexed.</ResponseField>
+<ResponseField name="documents" type="array">Array of ingested document summaries.</ResponseField>
+
+---
+
+## Check ingestion status
+
+**`GET /api/mie/ingest/status`**
+
+Returns the current ingestion state for a project. Use this to poll after calling `POST /mie/ingest` if you need to wait for completion before generating a PRD.
+
+<ParamField query="tenant_id" type="string" required>
+  Your tenant identifier.
+</ParamField>
+
+<ParamField query="project_id" type="string" required>
+  Project to check.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/mie/ingest/status?tenant_id=tenant-uuid&project_id=proj-uuid" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "status": "completed",
+  "document_count": 142,
+  "tenant_id": "tenant-uuid",
+  "project_id": "proj-uuid"
+}
+```
+</CodeGroup>
+
+<ResponseField name="status" type="string">One of `completed`, `in_progress`, `empty`, or `error`.</ResponseField>
+<ResponseField name="document_count" type="number">Number of documents currently indexed for this project.</ResponseField>
+
+---
+
+## Get metadata nodes
+
+**`GET /api/mie/v1/nodes`**
+
+Returns the list of metadata nodes available for graph visualization. Each node represents a Salesforce component (object, class, flow, etc.) indexed during ingestion.
+
+<ParamField query="tenant_id" type="string" required>
+  Your tenant identifier.
+</ParamField>
+
+<ParamField query="project_id" type="string" required>
+  Project to query.
+</ParamField>
+
+<ParamField query="types" type="string">
+  Comma-separated list of metadata types to filter by. Example: `CustomObject,ApexClass`.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/mie/v1/nodes?tenant_id=tenant-uuid&project_id=proj-uuid&types=CustomObject,ApexClass" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "CustomObject",
+      "api_name": "Account",
+      "label": "Account",
+      "category": "data-model"
+    },
+    {
+      "id": "node-2",
+      "type": "ApexClass",
+      "api_name": "AccountController",
+      "label": "Account Controller",
+      "category": "business-logic"
+    }
+  ],
+  "total": 2
+}
+```
+</CodeGroup>
+
+<ResponseField name="nodes" type="array">Array of metadata node objects.</ResponseField>
+<ResponseField name="total" type="number">Total node count (before any client-side filtering).</ResponseField>
+
+---
+
+## Get dependency graph
+
+**`GET /api/mie/v1/graph`**
+
+Returns the full metadata dependency graph for a project as nodes and directed edges. Use this to understand how components reference, extend, or trigger each other before planning a change.
+
+<ParamField query="tenant_id" type="string" required>
+  Your tenant identifier.
+</ParamField>
+
+<ParamField query="project_id" type="string" required>
+  Project to query.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/mie/v1/graph?tenant_id=tenant-uuid&project_id=proj-uuid" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "nodes": [
+    { "id": "node-1", "type": "CustomObject", "api_name": "Account", "label": "Account", "category": "data-model" }
+  ],
+  "edges": [
+    {
+      "source": "node-2",
+      "target": "node-1",
+      "relationship": "references"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+<ResponseField name="nodes" type="array">All metadata nodes in the graph.</ResponseField>
+<ResponseField name="edges" type="array">
+  Directed relationships between nodes.
+  <Expandable title="edge object">
+    <ResponseField name="source" type="string">Node ID of the dependent component.</ResponseField>
+    <ResponseField name="target" type="string">Node ID of the dependency.</ResponseField>
+    <ResponseField name="relationship" type="string">Relationship type: `references`, `extends`, `implements`, `contains`, or `triggers`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Generate a PRD
+
+**`POST /api/mie/prd/generate`**
+
+Generates a Product Requirements Document grounded in your ingested Salesforce metadata using RAG retrieval. The PRD includes structured sections derived from the business objective you provide.
+
+<ParamField body="tenant_id" type="string" required>
+  Your tenant identifier.
+</ParamField>
+
+<ParamField body="project_id" type="string" required>
+  Project whose indexed metadata informs the PRD.
+</ParamField>
+
+<ParamField body="context" type="object">
+  Business context for generation.
+  <Expandable title="context">
+    <ParamField body="business_objective" type="string">High-level description of what you want to build or change.</ParamField>
+    <ParamField body="user_personas" type="array">List of user persona names relevant to the feature.</ParamField>
+    <ParamField body="constraints" type="array">Known constraints or non-goals to respect during generation.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="retrieval_config" type="object">
+  RAG retrieval tuning.
+  <Expandable title="retrieval_config">
+    <ParamField body="top_k" type="number" default="10">Number of metadata documents to retrieve for context.</ParamField>
+    <ParamField body="hybrid_search" type="boolean" default="true">Whether to combine vector and keyword search during retrieval.</ParamField>
+  </Expandable>
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/mie/prd/generate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "tenant-uuid",
+    "project_id": "proj-uuid",
+    "context": {
+      "business_objective": "Add a self-service case deflection portal for customers",
+      "user_personas": ["Customer", "Support Agent"],
+      "constraints": ["Must use existing Case object", "No new custom objects"]
+    },
+    "retrieval_config": { "top_k": 15, "hybrid_search": true }
+  }'
+```
+
+```json Example response
+{
+  "success": true,
+  "prd": {
+    "id": "prd-uuid",
+    "title": "Case Deflection Portal PRD",
+    "status": "draft",
+    "tenant_id": "tenant-uuid",
+    "project_id": "proj-uuid",
+    "created_at": "2026-05-14T10:00:00Z"
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## Get a PRD
+
+**`GET /api/mie/prd/:id`**
+
+Retrieves a specific PRD by its UUID, including full content and all sections.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/mie/prd/prd-uuid" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "id": "prd-uuid",
+  "title": "Case Deflection Portal PRD",
+  "content": "## Overview\n...",
+  "status": "draft",
+  "sections": [
+    { "id": "sec-1", "title": "Problem Statement", "content": "...", "order": 1 },
+    { "id": "sec-2", "title": "Requirements", "content": "...", "order": 2 }
+  ],
+  "tenant_id": "tenant-uuid",
+  "project_id": "proj-uuid",
+  "created_at": "2026-05-14T10:00:00Z",
+  "updated_at": "2026-05-14T10:00:00Z"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string (uuid)">PRD identifier.</ResponseField>
+<ResponseField name="title" type="string">Generated PRD title.</ResponseField>
+<ResponseField name="content" type="string">Full PRD content as markdown.</ResponseField>
+<ResponseField name="status" type="string">Lifecycle status: `draft`, `in_review`, `approved`, or `archived`.</ResponseField>
+<ResponseField name="sections" type="array">Ordered list of PRD sections, each with `id`, `title`, `content`, and `order`.</ResponseField>
+
+---
+
+## Generate a Salesforce component
+
+**`POST /api/ai/generate`**
+
+Generates one or more Salesforce component files from a plain-language prompt. The response includes the generated source files, any warnings, and token usage metrics.
+
+<ParamField body="prompt" type="string" required>
+  Natural language description of the component. Between 10 and 2,000 characters.
+</ParamField>
+
+<ParamField body="framework" type="string" required>
+  Target Salesforce framework. One of `lwc`, `aura`, `apex`, `flow`, or `vf` (Visualforce).
+</ParamField>
+
+<ParamField body="features" type="array">
+  Optional capability flags: `dataBinding`, `validation`, `navigation`, `permissions`, `responsive`, `accessibility`.
+</ParamField>
+
+<ParamField body="include_tests" type="boolean" default="true">
+  Whether to generate accompanying test files.
+</ParamField>
+
+<ParamField body="template_id" type="string">
+  Optionally base generation on an existing template.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/ai/generate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "A Lightning Web Component that lists open cases for the current user with a status filter",
+    "framework": "lwc",
+    "features": ["dataBinding", "validation"],
+    "include_tests": true
+  }'
+```
+
+```json Example response
+{
+  "id": "gen-uuid",
+  "status": "success",
+  "files": [
+    {
+      "filename": "caseList.js",
+      "path": "force-app/main/default/lwc/caseList/caseList.js",
+      "content": "import { LightningElement } from 'lwc';\n...",
+      "language": "javascript",
+      "type": "component"
+    },
+    {
+      "filename": "caseList.html",
+      "path": "force-app/main/default/lwc/caseList/caseList.html",
+      "content": "<template>\n...",
+      "language": "html",
+      "type": "component"
+    }
+  ],
+  "warnings": [],
+  "usage": {
+    "prompt_tokens": 312,
+    "completion_tokens": 1840,
+    "total_tokens": 2152
+  }
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string">Generation job identifier.</ResponseField>
+<ResponseField name="status" type="string">Outcome: `success`, `partial`, or `error`.</ResponseField>
+<ResponseField name="files" type="array">
+  Generated files.
+  <Expandable title="file object">
+    <ResponseField name="filename" type="string">File name.</ResponseField>
+    <ResponseField name="path" type="string">Full project-relative path.</ResponseField>
+    <ResponseField name="content" type="string">File source content.</ResponseField>
+    <ResponseField name="language" type="string">Language identifier (`javascript`, `html`, `apex`, etc.).</ResponseField>
+    <ResponseField name="type" type="string">File role: `component`, `test`, `documentation`, or `metadata`.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="usage" type="object">Token consumption for the generation request.</ResponseField>

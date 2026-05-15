@@ -1,0 +1,71 @@
+---
+title: "Understand your Salesforce org with Metadata Intelligence"
+description: "Synapse ingests your Salesforce metadata, builds a dependency graph, and lets you query your org in plain English to understand component relationships."
+---
+
+Metadata Intelligence (MIE) is the knowledge layer that powers most of Synapse's analysis features. When you connect a Salesforce org, MIE ingests your metadata—Apex classes, triggers, flows, custom objects, fields, validation rules, and more—and organizes it into a searchable dependency graph. That graph is what Synapse consults when assessing change risk, generating code context for agents, and answering questions about your org.
+
+## What MIE ingests
+
+MIE pulls metadata from three sources:
+
+- **Core metadata**: Apex, Flows, CustomObjects, CustomFields, ValidationRules, and related components via the Salesforce Metadata API.
+- **OmniStudio**: OmniScripts, FlexCards, DataRaptors, and Integration Procedures if your org uses OmniStudio.
+- **Data Cloud**: Data Cloud objects and pipelines if available.
+
+Each metadata component is stored as a **node** in the dependency graph. Relationships between components—such as an Apex trigger that invokes a handler class, which in turn references a custom object—are stored as typed **edges** (REFERENCES, INVOKES, DEPENDS\_ON, TRIGGERS). Scores for complexity, quality, governance compliance, and change risk are calculated and stored alongside each node.
+
+## How to trigger a metadata sync
+
+After the initial sync that runs when you first connect your org, you can refresh the graph at any time.
+
+<Steps>
+  <Step title="Open Connections settings">
+    Go to **Settings → Connections** and find your Salesforce org in the list.
+  </Step>
+  <Step title="Start a sync">
+    Click **Sync Now** next to your org. You can choose between two sync modes:
+
+    - **Incremental sync** — downloads only metadata that has changed since the last sync. This is fast (seconds to a few minutes) and is appropriate for routine refreshes.
+    - **Full sync** — downloads all org metadata and rebuilds the graph from scratch. This is slower (three to five minutes for large orgs) but produces the most accurate results and should be run after major releases or architectural changes.
+  </Step>
+  <Step title="Monitor progress">
+    A progress indicator appears on the Connections page. The sync runs in the background—you can navigate away and return later. The graph is available for queries as soon as the sync completes.
+  </Step>
+</Steps>
+
+<Tip>
+  For active development orgs, run an incremental sync at the start of each sprint so the dependency graph stays fresh. Schedule a full sync once a week or after any major deployment.
+</Tip>
+
+## Using the dependency graph
+
+The dependency graph shows you how every component in your org connects to everything else. To explore it:
+
+1. Go to **Metadata Intelligence** in the left navigation.
+2. Search for a component by name or type using the search bar.
+3. Click a component to open its detail view. You'll see its properties, calculated scores, and a list of direct dependencies.
+4. Click **View in graph** to open the interactive visualization. Nodes represent components and edges represent relationships. Edge thickness indicates dependency strength; node color indicates risk level (green for low, red for critical).
+
+The graph supports three layout modes—**Force**, **Hierarchical**, and **Circular**—which you can switch between from the visualization toolbar. Click any node in the graph to navigate to that component's detail view.
+
+### Example: tracing a dependency chain
+
+Suppose you want to understand what would break if you modified an Apex class called `AccountService`. Search for `AccountService` in Metadata Intelligence and open its detail view. The dependency panel shows every component that references it directly, and you can traverse further to see second- and third-level dependents. This is the same analysis that powers Impact Analysis—running it from the graph gives you an interactive view rather than a risk score.
+
+## Searching your org with natural language
+
+MIE indexes every metadata component into a vector store, which means you can search your org using plain English questions rather than exact component names. The **Knowledge Center** in the left navigation is the interface for this.
+
+Type any question into the search bar and MIE returns the most relevant components and documentation, along with a synthesized answer grounded in your org's actual metadata:
+
+- "What fields does the Account object have?"
+- "Which flows reference Contact.Email?"
+- "Show me all Apex classes that call AccountService."
+- "What changed in the last deployment?"
+
+Results include source attribution so you can verify where each answer came from. You can also upload your own documentation—architecture decision records, runbooks, onboarding guides—and MIE will incorporate that content into search results alongside the metadata it ingests automatically.
+
+<Note>
+  Natural language search works best after a full sync. Incremental syncs update the graph but may not immediately re-embed all changed components. If a recent component isn't showing up in search, try a full sync and wait a few minutes for the embedding pipeline to complete.
+</Note>

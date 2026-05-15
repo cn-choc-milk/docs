@@ -1,0 +1,122 @@
+---
+title: "Assess Salesforce change risk with Impact Analysis"
+description: "Run Quick, Smart, or Comprehensive analysis on any component to see its risk score, dependency chain, and test coverage before you deploy."
+---
+
+Impact Analysis tells you what will break—and how badly—before you deploy a change to Salesforce. Select the components you're modifying, choose an analysis mode, and Synapse produces a risk score, a dependency visualization, and a test coverage summary. The goal is to surface surprises during development, not after a production incident.
+
+## Prerequisites
+
+Before running an analysis you need:
+
+- An active Salesforce org connection (go to **Settings → Connections** to set one up)
+- The **View All Data**, **Modify Metadata**, **Author Apex**, and **API Enabled** permissions in that org
+- For Smart and Comprehensive modes, a metadata sync that has run at least once
+
+## Analysis modes
+
+Synapse offers three modes with different speed and depth trade-offs. Choose based on what you're doing, not just what's fastest.
+
+<Tabs>
+  <Tab title="Quick (2–5 seconds)">
+    Quick mode analyzes only the components you select and their direct dependencies. It does not download metadata or use a cache, so it returns results almost instantly.
+
+    **Use Quick mode when:**
+    - You're actively writing code and want a rapid sanity check before committing.
+    - You're changing only one or two components with obvious, shallow dependency chains.
+    - You've already run a deeper analysis recently and just want to verify a small follow-up change.
+
+    **What it does not cover:**
+    - Transitive dependencies (dependencies of dependencies)
+    - Full risk scoring across the org
+    - Historical change frequency data
+  </Tab>
+  <Tab title="Smart (10–30 seconds) — recommended">
+    Smart mode uses the cached metadata from your last sync to run a comprehensive dependency traversal without re-downloading everything. It is the best choice for most day-to-day development and deployment work.
+
+    **Use Smart mode when:**
+    - You're validating a set of changes before opening a pull request.
+    - Your metadata sync is reasonably up to date (within the last week).
+    - You're making medium-sized changes that touch multiple components.
+
+    **What it covers:**
+    - Full transitive dependency analysis (up to five levels deep)
+    - Complete risk scoring across all five risk factors
+    - Test coverage alongside dependencies
+    - Incremental updates since the last sync
+  </Tab>
+  <Tab title="Comprehensive (3–5 minutes)">
+    Comprehensive mode downloads all metadata from your org and rebuilds the dependency graph from scratch before running the analysis. It is the most accurate mode and the right choice before any major release.
+
+    **Use Comprehensive mode when:**
+    - You're preparing for a major release or architectural change.
+    - You're running the first analysis on an org.
+    - You've made significant structural changes and want the freshest possible data.
+    - Smart mode returns results that seem inconsistent with what you know about the org.
+
+    <Warning>
+      Comprehensive mode takes three to five minutes for large orgs. Schedule it during off-hours if your org has more than 10,000 metadata components, and avoid running it repeatedly in the same session.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Run an analysis
+
+<Steps>
+  <Step title="Open Impact Analysis">
+    Click **Impact Analysis** in the left navigation. If you have multiple connected orgs, select the one you want to analyze from the org picker.
+  </Step>
+  <Step title="Select an analysis mode">
+    Click **Quick**, **Smart**, or **Comprehensive**. The interface shows the estimated time and, for Smart mode, the age of your current metadata cache.
+  </Step>
+  <Step title="Choose your components">
+    Use the component selector to find the components you're modifying. You can:
+    - Type to filter by name or component type.
+    - Click type badges (ApexClass, Flow, CustomObject, etc.) to filter the list.
+    - Use **Shift+click** to select a range.
+    - Click **Select All** to include everything in the filtered view.
+  </Step>
+  <Step title="Start the analysis">
+    Click **Start Analysis**. A progress indicator shows what the system is doing—resolving dependencies, scoring risk, building visualizations. For Smart and Comprehensive modes, you can leave the page and return; the analysis continues in the background.
+  </Step>
+  <Step title="Review results">
+    Once complete, Synapse opens the results view. Review the risk heatmap, dependency graph, test coverage distribution, and recommendations before proceeding with your deployment.
+  </Step>
+</Steps>
+
+## Reading results
+
+### Risk scores
+
+Every analyzed component receives a risk score from 0 to 100, calculated across five weighted factors:
+
+| Factor | Weight | What it measures |
+|--------|--------|-----------------|
+| Test coverage | 30% | Percentage of lines covered, critical path coverage, recent test results |
+| Code complexity | 25% | Cyclomatic complexity, method count, nesting depth |
+| Dependencies | 20% | Number and strength of incoming and outgoing dependencies |
+| Change frequency | 15% | Recent modifications, deployment failures, issue history |
+| Business criticality | 10% | Component type, business object references, security implications |
+
+Scores map to four risk levels:
+
+- **Critical (75–100)**: Extensive testing required before deployment. Common causes include zero test coverage, many dependents, and high cyclomatic complexity.
+- **High (50–74)**: Thorough testing needed. Often caused by low coverage combined with moderate dependency count.
+- **Medium (25–49)**: Standard testing is sufficient. The component has some dependencies and fair coverage.
+- **Low (0–24)**: Basic testing is enough. Few dependencies, good coverage, low complexity.
+
+### Dependency visualization
+
+The dependency graph shows your selected components as nodes and their relationships as edges. Edge thickness indicates dependency strength; node color reflects risk level. Use the layout controls to switch between **Force**, **Hierarchical**, and **Circular** views. Click any node to jump to that component's detail view in Metadata Intelligence.
+
+### Test coverage
+
+The test coverage panel shows coverage by component type as bar charts, highlights components with no coverage, and surfaces trends over time. Focus on any component flagged as critical with zero coverage—these are the highest-priority items to address before deploying.
+
+### Exporting results
+
+Click **Export** to download results as a PDF report, a CSV of component risk scores, or a JSON file for integration with your CI/CD pipeline.
+
+<Tip>
+  For sprint releases, run a Smart analysis on all components modified during the sprint as part of your definition of done. For major releases, run Comprehensive at least 24 hours before the deployment window so you have time to act on critical findings.
+</Tip>

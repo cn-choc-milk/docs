@@ -1,0 +1,139 @@
+---
+title: "Monitor and fix Salesforce governor limit violations"
+description: "See how Synapse traces governor limit consumption across your org's automation callchains and surfaces AI-generated fix suggestions for violations."
+---
+
+Salesforce enforces strict resource quotas — called governor limits — on every transaction that runs in the platform. These limits exist because Salesforce is a multi-tenant environment: no single org's code can consume unlimited resources at the expense of others. When your Apex code, flows, or triggers exceed a limit, Salesforce throws a runtime exception and rolls back the entire transaction. Governor limit errors are one of the most common sources of production incidents in Salesforce orgs, particularly under bulk data loads.
+
+## What limits Synapse tracks
+
+Synapse traces the following governor limits across your automation callchains:
+
+| Limit | What it measures | Salesforce maximum (synchronous) |
+|-------|-----------------|----------------------------------|
+| **SOQL queries** | `SELECT` statements executed across all called classes and triggers | 100 per transaction |
+| **DML statements** | `INSERT`, `UPDATE`, `DELETE`, and `UPSERT` operations | 150 per transaction |
+| **CPU time** | Estimated milliseconds of Apex processing | 10,000 ms per transaction |
+| **Heap size** | Estimated bytes of heap memory used | 6 MB per transaction |
+
+The critical word here is *aggregate*: Synapse doesn't just count the queries in a single class. It traces the complete callchain from a trigger or entry point through every downstream class, flow, and process builder it invokes, then sums the consumption across the entire chain. This gives you the real picture of what happens when that code runs under load.
+
+## How Synapse aggregates limit data
+
+When you sync your org's metadata, Synapse builds a dependency graph of all your components and their relationships. The governor limit analysis engine walks this graph from a given entry point — an Apex trigger, a class, or a flow — and visits every node it calls, at every depth. At each node, it counts the SOQL queries, DML statements, CPU estimates, and heap estimates, then aggregates them up to produce a total for the full transaction.
+
+This means you can catch problems like a trigger that itself has only 5 SOQL queries, but calls a helper class that calls another utility, which together bring the total to 95 out of 100 — within one bulk record update of hitting the limit.
+
+## The Governor Dashboard
+
+The Governor Dashboard gives you an org-wide view of limit risk. To open it, go to your project and click **Governor Analysis** in the sidebar.
+
+The dashboard pre-populates a grid of risk cards for 14 common Salesforce objects — Account, Contact, Opportunity, and others. Each card shows:
+
+- The **risk level** for that object's automation (Critical, High, Medium, or Low)
+- A visual budget bar for each limit showing the percentage consumed
+- The number of **hotspot** nodes — the components contributing most to consumption
+
+**Risk levels** are determined by the highest limit percentage across the callchain:
+
+| Risk level | Threshold | Recommended action |
+|------------|-----------|-------------------|
+| **Critical** | Any limit above 90% | Refactor immediately — production failures likely under load |
+| **High** | Any limit above 80% | Refactor before the next deployment |
+| **Medium** | Any limit above 60% | Monitor and plan improvements |
+| **Low** | All limits below 60% | Acceptable for production |
+
+To analyze a custom object or trigger, use the search bar at the top of the dashboard to look up any component by name.
+
+## Drilling into a callchain
+
+Click any risk card to open the **Transaction Callchain View**, a graph showing every component in the automation chain from the entry point down to leaf nodes. Each node in the graph displays its individual contribution to the total governor limit budget. Hotspot nodes — the ones consuming the most resources — are highlighted so you know exactly where to focus your refactoring effort.
+
+## AI-generated fix suggestions
+
+When Synapse identifies a governor limit violation in your code, it provides specific, actionable recommendations alongside the analysis results. For example:
+
+> "Bulkify SOQL queries in `AccountHelper` — 12 queries could be reduced to 3 with Map-based lookups."
+
+> "Move DML operations in `ContactSync` to async processing to reduce synchronous DML count."
+
+For common violation patterns, Synapse can go further and auto-generate a patched version of your Apex code. The automated fix engine handles these categories deterministically — no guessing:
+
+| Violation category | What gets fixed |
+|-------------------|----------------|
+| **SOQL in loop** | Queries inside `for`/`while` loops are extracted before the loop and rewritten using `Map<Id, SObject>` lookups |
+| **DML in loop** | DML operations inside loops are collected into a `List<SObject>` and replaced with a single bulk operation after the loop |
+| **Missing CRUD/FLS** | Adds field-level security checks using `Schema.sObjectType.describeSObjects()` |
+| **Hardcoded IDs** | Replaces literal Salesforce IDs with Custom Metadata references |
+| **Missing sharing model** | Adds `with sharing` to class declarations |
+
+Generated fixes go through an automated validation pipeline that checks syntax, security, bulkification, test coverage, and best practices before presenting the result to you for review. You can accept, reject, or request a retry with additional context.
+
+## "What If" impact analysis before deployment
+
+Before you deploy a change, you can use the What-If Impact Analysis tool to predict how it will affect governor limit exposure. This is especially important when you're deleting a field, renaming a class, or modifying a trigger — any of which can shift the callchain and change aggregate limit consumption.
+
+For example, if you're considering deleting a custom field, What-If analysis will show you every component that references it, classified as **Breaking**, **Warning**, or **Safe**. If any of those components are in a limit-sensitive callchain, Synapse flags the risk so you can address it before the deployment goes out.
+
+<Note>
+  What-If analysis works from the metadata dependency graph built during your last sync. If your org has changed since the last sync, re-sync before running impact analysis to ensure results reflect your current org state.
+</Note>
+
+You can chain multiple what-if scenarios together — for instance, simulating a field deletion followed by a trigger modification — to see the cumulative blast radius of an entire set of planned changes before you touch anything in the org.
+
+## API access
+
+You can also query governor limit data programmatically:
+
+```bash
+# Analyze a single component
+curl -X POST https://your-synapse-host/api/v2/governor-analysis/node-by-key \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-api-token>" \
+  -H "X-Tenant-ID: <your-tenant-id>" \
+  -d '{
+    "node_key": "AccountTrigger",
+    "node_type": "ApexTrigger",
+    "org_id": "<your-org-id>"
+  }'
+```
+
+```json
+{
+  "data": {
+    "risk_level": "HIGH",
+    "limits": {
+      "soql_queries": 78,
+      "soql_limit": 100,
+      "soql_pct": 78,
+      "dml_statements": 45,
+      "dml_limit": 150,
+      "dml_pct": 30,
+      "cpu_time_ms": 5200,
+      "cpu_limit_ms": 10000,
+      "cpu_pct": 52
+    },
+    "hotspots": [
+      {
+        "node_name": "AccountHelper",
+        "node_type": "ApexClass",
+        "reason": "Contains 12 SOQL queries across 3 methods",
+        "soql_count": 12,
+        "dml_count": 5
+      }
+    ],
+    "recommendations": [
+      "Bulkify SOQL queries in AccountHelper — 12 queries could be reduced to 3 with Map-based lookups"
+    ]
+  }
+}
+```
+
+Additional API endpoints for governor analysis:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v2/governor-analysis/org-overview` | GET | Aggregate risk overview across the entire org |
+| `/api/v2/governor-analysis/batch` | POST | Analyze multiple components in one request |
+| `/api/v2/governor-analysis/object-map` | GET | Object-level automation map with risk colors |
+| `/api/v2/governor-analysis/shared-classes` | GET | Classes referenced by multiple callchains |

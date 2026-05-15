@@ -1,0 +1,135 @@
+---
+title: "Agents API — list, inspect, and invoke Synapse agents"
+description: "List available AI agents, retrieve agent details, and invoke agents directly with a task description using the Synapse v1 Agents API."
+---
+
+Synapse coordinates work through a registry of specialized AI agents, each designed for a particular class of Salesforce development task. The Agents API lets you inspect which agents are available, retrieve their capabilities and status, and invoke them directly with a task payload outside of a full execution session.
+
+All endpoints require a JWT Bearer token. The base URL for agent endpoints is `https://api.synapse-architect.com/api`.
+
+---
+
+## List agents
+
+**`GET /api/agents`**
+
+Returns all agents registered in the platform for your tenant. Each agent entry includes its capabilities and current availability status.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/agents" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+[
+  {
+    "id": "forge",
+    "name": "FORGE",
+    "description": "Generates and edits Salesforce code components including Apex, LWC, and Flow.",
+    "capabilities": ["apex", "lwc", "flow", "code-review"],
+    "status": "available"
+  },
+  {
+    "id": "sentinel",
+    "name": "SENTINEL",
+    "description": "Validates changes against org standards and governance rules.",
+    "capabilities": ["governance", "lint", "security-review"],
+    "status": "available"
+  }
+]
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string">Unique agent identifier used in execution and invocation requests.</ResponseField>
+<ResponseField name="name" type="string">Human-readable agent name.</ResponseField>
+<ResponseField name="description" type="string">What the agent is designed to do.</ResponseField>
+<ResponseField name="capabilities" type="array">List of task types the agent handles.</ResponseField>
+<ResponseField name="status" type="string">Current availability: `available`, `busy`, or `offline`.</ResponseField>
+
+---
+
+## Get agent details
+
+**`GET /api/agents/:agent_id`**
+
+Retrieves the full detail record for a single agent by its ID.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/agents/forge" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "id": "forge",
+  "name": "FORGE",
+  "description": "Generates and edits Salesforce code components including Apex, LWC, and Flow.",
+  "capabilities": ["apex", "lwc", "flow", "code-review"],
+  "status": "available"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string">Agent identifier.</ResponseField>
+<ResponseField name="name" type="string">Agent display name.</ResponseField>
+<ResponseField name="description" type="string">Agent description.</ResponseField>
+<ResponseField name="capabilities" type="array">Capability tags.</ResponseField>
+<ResponseField name="status" type="string">Current status: `available`, `busy`, or `offline`.</ResponseField>
+
+---
+
+## Execute an agent
+
+**`POST /api/agents/:agent_id/execute`**
+
+Invokes an agent directly with a task description and optional context. Use this endpoint when you want to run a single-agent task without creating a full action plan or execution session.
+
+<ParamField body="task" type="string" required>
+  Plain-language description of what the agent should do.
+</ParamField>
+
+<ParamField body="context" type="object">
+  Structured context to pass to the agent (e.g., org metadata, related file contents).
+</ParamField>
+
+<ParamField body="parameters" type="object">
+  Agent-specific parameter overrides. Refer to the individual agent's documentation for supported keys.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/agents/forge/execute" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task": "Refactor AccountController.cls to remove DML inside a for loop",
+    "context": {
+      "file_path": "force-app/main/default/classes/AccountController.cls",
+      "framework": "apex"
+    }
+  }'
+```
+
+```json Example response
+{
+  "execution_id": "exec-uuid",
+  "status": "completed",
+  "result": {
+    "files_modified": ["force-app/main/default/classes/AccountController.cls"],
+    "summary": "Moved DML operations outside the loop using a List pattern. Reduces governor limit risk."
+  },
+  "error": null
+}
+```
+</CodeGroup>
+
+<ResponseField name="execution_id" type="string">Unique identifier for this invocation, usable for audit lookups.</ResponseField>
+<ResponseField name="status" type="string">Outcome: `completed`, `in_progress`, or `failed`.</ResponseField>
+<ResponseField name="result" type="object">Agent-specific result payload. Shape varies by agent and task type.</ResponseField>
+<ResponseField name="error" type="string | null">Error message if the invocation failed, otherwise `null`.</ResponseField>
+
+<Note>
+  Direct agent invocations are not subject to the governance gate pipeline that runs during full POD execution. If you need Sentinel validation, use `POST /api/v2/board/pod-execute` instead.
+</Note>

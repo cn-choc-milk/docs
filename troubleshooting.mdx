@@ -1,0 +1,250 @@
+---
+title: "Troubleshoot and fix common Synapse platform issues"
+description: "Diagnose and resolve the most common Synapse problems, from Salesforce connection errors and agent failures to metadata sync issues and API rate limits."
+---
+
+When something goes wrong in Synapse, the symptoms usually point clearly to one of a handful of root causes. This page walks you through the most common issues organized by category — find the one that matches what you're seeing and follow the steps to resolve it.
+
+<AccordionGroup>
+
+  <Accordion title="Salesforce connection issues">
+
+    **Symptoms**
+
+    - A `401 Unauthorized` error appears when Synapse tries to access your org
+    - The connection status in **Settings → Connections** shows as expired or disconnected
+    - Agents fail immediately with a message like "Unable to reach Salesforce org"
+
+    **Causes**
+
+    Salesforce OAuth tokens expire after a period of inactivity or when your org administrator revokes connected app access. Synapse uses OAuth 2.0 and never stores your Salesforce password, so a token refresh requires you to re-authorize.
+
+    **How to fix**
+
+    <Steps>
+      <Step title="Open your connection settings">
+        Go to **Settings → Connections** and find your Salesforce org in the list.
+      </Step>
+      <Step title="Check the connection status">
+        If the status badge shows **Expired** or **Error**, click **Reconnect**.
+      </Step>
+      <Step title="Authorize Synapse in Salesforce">
+        A Salesforce login window opens. Sign in with the same user account you originally connected with, then click **Allow** on the permissions screen.
+      </Step>
+      <Step title="Verify the connection">
+        Back in Synapse, the status badge should turn green and show **Connected**. If it does not, click **Test Connection** to see the specific error message.
+      </Step>
+    </Steps>
+
+    <Note>
+      If you see `401` errors only on specific metadata types, the connected app in Salesforce may be missing permissions. Ask your Salesforce admin to confirm that the Synapse connected app has **Manage user data via APIs** and **Access and manage your data** scopes enabled.
+    </Note>
+
+    <Warning>
+      Reconnecting generates a new OAuth token. If your team shares a single Salesforce user for the connection, coordinate the reconnect so active agent executions are not interrupted mid-run.
+    </Warning>
+
+  </Accordion>
+
+  <Accordion title="Agent execution failures">
+
+    **Symptoms**
+
+    - An agent task shows a **Failed** status with a timeout or sandbox error
+    - You see log lines mentioning `POD_TIMEOUT`, `EXECUTION_TIMEOUT`, or `SANDBOX_ERROR`
+    - The agent appears to start but never produces output
+
+    **Causes**
+
+    Agent tasks run inside isolated execution environments. Failures usually come from one of three sources: the task ran longer than the allowed execution window, the sandbox environment hit a resource limit, or the agent received an ambiguous prompt and could not proceed.
+
+    **How to fix**
+
+    <Steps>
+      <Step title="Open the execution logs">
+        Click on the failed task node in your action plan, then open the **Last Run** tab to see the full log output.
+      </Step>
+      <Step title="Identify the error type">
+        - **POD_TIMEOUT**: The task exceeded the execution time limit. Break the task into smaller subtasks and re-run.
+        - **SANDBOX_ERROR**: The sandbox environment crashed. Click **Retry** — transient sandbox errors usually resolve on the second attempt.
+        - **Ambiguous prompt**: The agent logged that it could not determine what to build. Rewrite the task description to be more specific.
+      </Step>
+      <Step title="Retry or restructure the task">
+        For timeout errors, split the original task into two or more child tasks in Planning Mode. For sandbox errors that persist after two retries, contact support with the run ID shown in the log header.
+      </Step>
+    </Steps>
+
+    <Note>
+      Agent tasks in sandbox environments must complete within the configured execution window. Tasks involving large metadata downloads (such as a full org sync) may need to be run as scheduled off-peak jobs.
+    </Note>
+
+  </Accordion>
+
+  <Accordion title="Metadata sync problems">
+
+    **Symptoms**
+
+    - Impact analysis or agent context shows outdated component data
+    - The metadata cache status in **Settings → Connections** says **Stale** or shows a last-sync date from days ago
+    - A sync job appears stuck with a progress bar that does not move
+
+    **Causes**
+
+    Synapse caches your org's metadata to speed up analysis and agent context retrieval. The cache becomes stale when a sync has not run recently, or a previous sync was interrupted. A stuck sync is usually caused by a Salesforce API rate limit being hit mid-process.
+
+    **How to fix**
+
+    <Steps>
+      <Step title="Check sync status">
+        Go to **Settings → Connections**, select your org, and look at the **Metadata Sync** section. Note the last-sync timestamp and any error badges.
+      </Step>
+      <Step title="Clear a stuck sync">
+        If the progress bar has not moved for more than 10 minutes, click **Cancel Sync**, wait 30 seconds, then click **Sync Now** to start a fresh sync.
+      </Step>
+      <Step title="Force a full refresh">
+        If cached data appears incorrect after a successful sync, click **Clear Cache** next to your org and then **Sync Now**. A full re-download takes 3–5 minutes for large orgs.
+      </Step>
+      <Step title="Schedule regular syncs">
+        Turn on **Automatic Sync** and set the frequency to at least daily so the cache stays fresh without manual intervention.
+      </Step>
+    </Steps>
+
+    <Warning>
+      Clearing the metadata cache removes all locally stored org data. Impact analysis and agent context will be unavailable until the new sync completes. Avoid clearing the cache during active agent executions.
+    </Warning>
+
+  </Accordion>
+
+  <Accordion title="Impact analysis errors">
+
+    **Symptoms**
+
+    - The impact analysis panel shows "No data available" for a component
+    - An analysis times out before producing results
+    - Risk scores or dependency graphs are missing for components you know exist
+
+    **Causes**
+
+    Impact analysis reads from the metadata cache. Missing data usually means the cache is stale or the component was added after the last sync. Timeouts happen when a Comprehensive analysis runs on a very large org without sufficient Salesforce API headroom.
+
+    **How to fix**
+
+    <Steps>
+      <Step title="Refresh the metadata cache">
+        If components are missing, run a metadata sync first (see **Metadata sync problems** above), then re-run the analysis.
+      </Step>
+      <Step title="Switch analysis modes">
+        If a Comprehensive analysis is timing out, switch to **Smart** mode. Smart mode uses cached metadata and typically completes in 10–30 seconds. Reserve Comprehensive analysis for off-peak hours before major releases.
+      </Step>
+      <Step title="Reduce the component set">
+        Select only the components you are actually changing rather than analyzing the entire org. The system handles 100,000+ components, but per-analysis performance is best under 10,000.
+      </Step>
+      <Step title="Check API limit headroom">
+        Go to **Settings → Connections → Governor Limits** to see how many Salesforce API calls remain for the day. If you are near the limit, wait until the limit resets before running a Comprehensive analysis.
+      </Step>
+    </Steps>
+
+    <Note>
+      Analysis accuracy improves with a fresh metadata cache, complete test coverage data, and Comprehensive mode. For production deployments, run a fresh Comprehensive analysis rather than relying on a cached Smart analysis.
+    </Note>
+
+  </Accordion>
+
+  <Accordion title="Action plan issues">
+
+    **Symptoms**
+
+    - The **Start Execution** button is disabled or grayed out
+    - A plan fails to generate from your description
+    - Execution is stuck with one or more nodes showing **Blocked** status
+
+    **Causes**
+
+    Plans that cannot start execution almost always have a validation error — an unassigned task node, a circular dependency, or an approval node with no approvers configured. Blocked nodes during execution mean a prerequisite task failed or an approval is pending. Plans that fail to generate usually received a prompt that was too vague.
+
+    **How to fix**
+
+    <Steps>
+      <Step title="Run validation">
+        In Planning Mode, click **Validate Plan**. The validation dialog lists every error with a link to the problematic node. Fix all errors before trying to start execution.
+      </Step>
+      <Step title="Resolve blocked nodes">
+        Click on any node showing a warning icon to open its detail panel. The **Blocked By** section tells you exactly which dependency or approval is holding it up. Complete the upstream task, or right-click the blocked node and choose **Skip** if you want to bypass it.
+      </Step>
+      <Step title="Fix a plan that won't generate">
+        Make your task description more specific — include the Salesforce object name, the desired behavior, and any constraints. For example, instead of "update account fields", try "add a validation rule to the Account object that prevents saving if Annual Revenue is blank when Type equals Customer".
+      </Step>
+      <Step title="Retry a failed execution node">
+        Click the failed node (marked with a red ✗), review the logs, fix the underlying issue, then click **Retry** from the execution controls panel.
+      </Step>
+    </Steps>
+
+    <Note>
+      You can pause execution at any time by clicking **Pause** in the execution controls. Active tasks finish before the pause takes effect — no work is lost.
+    </Note>
+
+  </Accordion>
+
+  <Accordion title="API errors (401, 403, 429)">
+
+    **Symptoms**
+
+    - API calls from your CI/CD pipeline or custom integration return `401 Unauthorized`
+    - Requests return `403 Forbidden` for specific resources
+    - You receive `429 Too Many Requests` responses and requests start failing
+
+    **Causes**
+
+    A `401` means the API key or token is missing, expired, or malformed. A `403` means the key is valid but does not have permission to access the requested resource — usually because the key was scoped to specific projects or endpoints. A `429` means you have exceeded the rate limit for your plan.
+
+    **How to fix**
+
+    **For 401 errors:**
+
+    <Steps>
+      <Step title="Verify the API key">
+        Go to **Settings → API Keys** and confirm the key you are using is listed and has not been revoked. Revoked keys show a strikethrough.
+      </Step>
+      <Step title="Check the Authorization header">
+        Your request must include the key in the `Authorization` header as a Bearer token:
+        ```http
+        Authorization: Bearer YOUR_API_KEY
+        ```
+      </Step>
+      <Step title="Regenerate if necessary">
+        If the key is valid but requests still return `401`, regenerate it in **Settings → API Keys** and update your integration with the new value.
+      </Step>
+    </Steps>
+
+    **For 403 errors:**
+
+    Check which projects and endpoints the key is scoped to in **Settings → API Keys**. If you need broader access, create a new key with the required permissions or contact your workspace admin.
+
+    **For 429 errors:**
+
+    <Steps>
+      <Step title="Implement exponential backoff">
+        Retry failed requests with increasing delays. The `Retry-After` header in the `429` response tells you how many seconds to wait before retrying:
+        ```javascript
+        // Example: respect Retry-After header
+        const retryAfter = parseInt(response.headers['retry-after'] || '60', 10);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        ```
+      </Step>
+      <Step title="Reduce request concurrency">
+        If you are running parallel API calls, add a concurrency limit to keep your request rate below the plan limit.
+      </Step>
+      <Step title="Review your plan limits">
+        Go to **Settings → Billing** to see your current rate limits and upgrade your plan if your integration consistently approaches them.
+      </Step>
+    </Steps>
+
+    <Warning>
+      Do not share API keys across environments. Use separate keys for development, staging, and production so you can revoke individual keys without affecting other environments.
+    </Warning>
+
+  </Accordion>
+
+</AccordionGroup>
+
+If none of the steps above resolve your issue, open a support ticket from the **?** icon in the top-right corner of the app and include the relevant run ID, error message, and a description of what you were doing. The support team can access detailed server-side logs that are not visible in the UI.

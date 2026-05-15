@@ -1,0 +1,112 @@
+---
+title: 'Synapse REST API reference and quick-start overview'
+description: 'Explore the Synapse REST API to build, automate, and extend your Salesforce development workflows. Base URL: https://api.synapse-architect.com/api.'
+---
+
+The Synapse REST API gives you programmatic access to the same capabilities available in the Synapse dashboard — including AI-powered metadata analysis, project management, agent orchestration, and conversation threading. You can use the API to automate Salesforce development workflows, integrate Synapse into your CI/CD pipelines, or build custom tooling on top of the platform.
+
+## Base URL
+
+All API requests are made over HTTPS to the production base URL:
+
+```
+https://api.synapse-architect.com/api
+```
+
+For local development against a self-hosted instance, use:
+
+```
+http://localhost:8082/api
+```
+
+## Versioning
+
+The API uses path-based versioning. Most endpoints are available under the `v1` or `v2` prefix:
+
+```
+https://api.synapse-architect.com/api/v1/<resource>
+https://api.synapse-architect.com/api/v2/<resource>
+```
+
+Certain feature-specific routes (such as MIE and Composio endpoints) use their own path prefixes rather than a global version segment. The API version is also returned in health check responses so you can confirm which version your instance is running.
+
+<Note>
+  When a new major version is released, the previous version remains available for a deprecation window. Check the changelog for specific timeline details.
+</Note>
+
+## Request and response format
+
+All request bodies must be JSON. Set the `Content-Type` header on every write request:
+
+```
+Content-Type: application/json
+```
+
+All responses are returned as JSON. Successful responses contain the requested resource data directly. Error responses follow a consistent structure:
+
+```json
+{
+  "error": "Error Type",
+  "message": "Human readable message",
+  "code": "ERROR_CODE",
+  "details": {}
+}
+```
+
+## API categories
+
+The Synapse API is organized into the following categories:
+
+| Category | Description |
+|---|---|
+| **Health** | Verify API availability. No authentication required. |
+| **MIE (Metadata Intelligence Engine)** | Ingest Salesforce metadata, query nodes, and retrieve dependency graphs. |
+| **PRD Generation** | Generate and retrieve Product Requirements Documents from ingested metadata. |
+| **Specs** | Create and manage technical specifications derived from PRDs. |
+| **Connections** | Manage Salesforce connections via OAuth. |
+| **Metadata** | Query and sync Salesforce metadata types directly. |
+| **Projects** | Manage Synapse projects. |
+| **AI Generation** | Generate and validate Salesforce components using AI. |
+| **Agents** | Create and manage AI agents. |
+| **Threads** | Manage AI conversation threads and messages. |
+| **Templates** | Access component and workflow templates. |
+
+## Quick start
+
+The health endpoint requires no authentication and is a good first request to confirm connectivity:
+
+```bash
+curl https://api.synapse-architect.com/api/v1/health
+```
+
+A successful response looks like:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-11-01T12:00:00.000Z",
+  "version": "2.0.0"
+}
+```
+
+Once you have an API token, you can make authenticated requests. The example below lists your active Salesforce connections:
+
+```bash
+curl https://api.synapse-architect.com/api/composio/connected-accounts \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+See [Authenticate Synapse API requests](/api/authentication) for details on obtaining and using your token.
+
+## Error codes
+
+| Status | Meaning |
+|---|---|
+| `400` | Bad request — check your request parameters. |
+| `401` | Unauthorized — your token is missing or invalid. |
+| `403` | Forbidden — your token does not have access to this resource. |
+| `404` | Not found — the requested resource does not exist. |
+| `429` | Rate limited — you have exceeded your request quota. |
+| `500` | Internal server error — something went wrong on the Synapse side. |
+
+See [API rate limits and usage tiers](/api/rate-limits) for guidance on handling `429` responses.

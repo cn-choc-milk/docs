@@ -1,0 +1,113 @@
+---
+title: "Connect your Salesforce org to Synapse for analysis"
+description: "Link a Production, Sandbox, or DevHub Salesforce org to Synapse using OAuth so the platform can read your metadata and analyze your automations."
+---
+
+Synapse connects to your Salesforce org using OAuth, so you never need to share a password. Once connected, Synapse can read your org's metadata — objects, fields, Apex classes, flows, and more — to power its analysis and AI-generated recommendations. You can connect multiple orgs (for example, a Sandbox for development and Production for monitoring) and switch between them at any time.
+
+## Prerequisites
+
+Before you add a connection, make sure you have:
+
+- A Synapse account (sign up at [synapse-architect.com](https://synapse-architect.com) if you haven't yet)
+- A Salesforce user account in the org you want to connect with at least **Read** access to metadata
+- For DevHub orgs: System Administrator profile or equivalent, since scratch org management requires elevated permissions
+- Pop-ups allowed for `synapse-architect.com` in your browser (the OAuth window opens as a pop-up)
+
+## Connect a Salesforce org
+
+<Steps>
+  <Step title="Open Settings">
+    In the Synapse navigation bar, click your account avatar or the gear icon in the top-right corner, then select **Settings**.
+  </Step>
+
+  <Step title="Go to Connections">
+    In the Settings sidebar, click **Connections**. This page shows all your currently connected services, including any existing Salesforce orgs.
+  </Step>
+
+  <Step title="Add a connection">
+    Click **Add connection** and choose **Salesforce** from the list of available integrations.
+  </Step>
+
+  <Step title="Choose your org type">
+    Select the type of org you are connecting:
+
+    | Org type | When to use |
+    |----------|-------------|
+    | **Production** | Your live Salesforce org with real customer data |
+    | **Sandbox** | A development or testing copy of your Production org |
+    | **Developer / DevHub** | A Developer Edition or DevHub org for scratch org management |
+
+    Synapse uses this label to display environment badges throughout the UI and to warn you when analysis affects production metadata.
+  </Step>
+
+  <Step title="Authenticate with Salesforce">
+    Click **Connect with Salesforce**. A Salesforce login pop-up will open. Sign in with the credentials for the org you want to connect — make sure you're logging in to the correct org type (use the **Use Custom Domain** link if your org has a custom login URL).
+
+    After you log in, Salesforce will ask you to approve the permissions Synapse is requesting. Review them and click **Allow**.
+  </Step>
+
+  <Step title="Confirm the connection">
+    Once authentication succeeds, the pop-up closes and your new org appears in the Connections list with a green **Active** badge. Synapse automatically fetches a metadata overview in the background — this usually takes less than a minute.
+  </Step>
+</Steps>
+
+## Permissions Synapse requests
+
+Synapse requests the following OAuth scopes from Salesforce:
+
+| Scope | What Synapse uses it for |
+|-------|--------------------------|
+| **Access and manage your data (api)** | Reading Salesforce metadata via the Metadata API and Tooling API |
+| **Perform requests at any time (refresh_token)** | Keeping the connection active without requiring you to log in again |
+| **Access custom permissions** | Reading permission sets and custom permission metadata |
+
+Synapse does **not** write data to your Salesforce org. All operations are read-only unless you explicitly trigger a deployment through the platform.
+
+<Note>
+  Your OAuth tokens are stored encrypted in Synapse's database. Synapse refreshes tokens automatically before they expire. If a token cannot be refreshed — for example, if a Salesforce admin revokes the connected app's access — your connection will show an **Expired** status and you'll need to re-authenticate.
+</Note>
+
+## Connect multiple orgs
+
+You can connect as many Salesforce orgs as you need. A common setup is:
+
+- **Production** — monitored for governor limit risk and dependency analysis
+- **Sandbox (Full or Partial Copy)** — used for pre-deployment what-if analysis
+- **Developer / DevHub** — used for scratch org workflows and CI/CD integration
+
+To add another org, repeat the steps above. Each org appears as a separate entry in your Connections list, labeled with its org type badge. When you work in Synapse — for example, running a metadata sync or a governor limit analysis — you choose which connected org to target.
+
+## Check connection health
+
+On the **Connections** page, each Salesforce org shows a status indicator:
+
+| Status | Meaning |
+|--------|---------|
+| **Active** | Token is valid; Synapse can access the org |
+| **Expired** | Token expired or was revoked — click **Refresh** to re-authenticate |
+| **Error** | An unexpected error occurred — hover for details or try refreshing |
+
+If a connection shows **Expired**, click the refresh icon next to it. This opens the Salesforce OAuth flow again so you can issue a new token without removing and re-adding the connection.
+
+<Warning>
+  If a Salesforce administrator revokes the Synapse connected app from your org's **Connected Apps** settings, your connection will stop working immediately. Contact your Salesforce admin to restore access, then click **Refresh** in Synapse to re-authenticate.
+</Warning>
+
+## Remove a connection
+
+To disconnect a Salesforce org:
+
+<Steps>
+  <Step title="Open Connections">
+    Go to **Settings → Connections**.
+  </Step>
+  <Step title="Find the org">
+    Locate the Salesforce org you want to remove.
+  </Step>
+  <Step title="Delete the connection">
+    Click the **···** menu next to the org and select **Remove connection**. Confirm when prompted.
+  </Step>
+</Steps>
+
+Removing a connection deletes the stored OAuth token and removes the org from all dropdowns in Synapse. It does not affect anything in Salesforce itself — the connected app entry in your org remains unless you also revoke it there.

@@ -1,0 +1,142 @@
+---
+title: "Automate Salesforce org analysis with GitHub CI/CD"
+description: "Connect Synapse to GitHub to run automated governor limit and impact analysis on every pull request, with results posted as GitHub Check Runs."
+---
+
+Synapse integrates with GitHub to run automated Salesforce analysis on every pull request. When a developer opens or updates a PR that touches Salesforce metadata or Apex code, Synapse automatically analyzes the changes for governor limit risk and dependency impact, then posts the results directly in GitHub as a Check Run. Your team gets actionable feedback in the same place they review code — without switching tools or waiting for manual analysis.
+
+## What the integration does
+
+When a pull request is opened or updated in a connected repository, Synapse:
+
+1. Detects the changed Salesforce components from the diff
+2. Runs **Governor Limit Analysis** across the automation callchains of affected components
+3. Runs **What-If Impact Analysis** to identify which existing components would be broken, warned, or safely affected by the changes
+4. Posts a **GitHub Check Run** on the PR with a pass or fail status and a detailed breakdown of findings
+
+The Check Run appears in the PR's **Checks** tab alongside your other CI jobs. Reviewers can see the risk level, limit consumption percentages, and a list of breaking changes directly in GitHub — no Synapse login required to read the results.
+
+## Prerequisites
+
+Before setting up the integration, you need:
+
+- A Synapse project connected to the Salesforce org you want to analyze
+- Metadata synced at least once (see [Sync Salesforce metadata](/salesforce/metadata-sync))
+- A GitHub repository where you manage Salesforce source (typically a SFDX or Salesforce DX project structure)
+- GitHub repository admin access to configure webhooks or install GitHub Apps
+- The GitHub integration features enabled for your Synapse tenant (contact your account team if you don't see GitHub options in Settings)
+
+## Authentication options
+
+Synapse supports two methods for authenticating with GitHub. GitHub App authentication is strongly recommended for team environments:
+
+<Tabs>
+  <Tab title="GitHub App (recommended)">
+    GitHub App authentication uses short-lived installation tokens that are automatically refreshed. This is the most secure option for team use.
+
+    To configure GitHub App authentication:
+
+    1. In Synapse, go to **Settings → Connections → GitHub**
+    2. Click **Install GitHub App**
+    3. Choose the GitHub organization or personal account where your Salesforce repository lives
+    4. Select the repositories you want Synapse to have access to
+    5. Confirm the installation
+
+    Synapse stores the App installation credentials per tenant and refreshes tokens automatically.
+  </Tab>
+  <Tab title="Personal Access Token">
+    You can also authenticate using a GitHub Personal Access Token (PAT). This is suitable for individual developers or initial testing.
+
+    To configure PAT authentication:
+
+    1. In GitHub, go to **Settings → Developer settings → Personal access tokens** and generate a token with `repo` scope
+    2. In Synapse, go to **Settings → Connections → GitHub**
+    3. Click **Add token** and paste your PAT
+
+    <Warning>
+      PATs are tied to an individual GitHub account. If that account leaves the organization or the token is revoked, the integration will stop working. Use GitHub App authentication for shared team repositories.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Configure the webhook
+
+Once GitHub authentication is set up, connect your repository to trigger automated analysis:
+
+<Steps>
+  <Step title="Open your Synapse project">
+    Navigate to the project linked to your Salesforce org.
+  </Step>
+
+  <Step title="Go to project settings">
+    Click the **Settings** tab within the project, then select **Integrations**.
+  </Step>
+
+  <Step title="Connect a repository">
+    Click **Connect GitHub repository** and select the repository that contains your Salesforce source. If you installed the GitHub App in the previous step, your authorized repositories appear in the list automatically.
+  </Step>
+
+  <Step title="Configure the trigger">
+    Choose when Synapse should run analysis:
+
+    - **On pull request open** — runs when a PR is first opened
+    - **On pull request update** — runs whenever new commits are pushed to an open PR
+    - **Both** (recommended) — ensures every version of the PR is analyzed
+
+  </Step>
+
+  <Step title="Save the configuration">
+    Click **Save**. Synapse registers a webhook with GitHub on your behalf. You can verify it was created by going to your GitHub repository's **Settings → Webhooks** — you'll see a Synapse entry there.
+  </Step>
+</Steps>
+
+## What the PR check shows
+
+When Synapse completes analysis for a PR, it posts a Check Run to GitHub with one of the following conclusions:
+
+| Check status | Meaning |
+|-------------|---------|
+| **Success** | No governor limit violations above the risk threshold and no breaking dependency changes detected |
+| **Failure** | At least one component has a Critical or High governor limit risk, or breaking changes were found |
+| **Neutral** | Analysis completed but results are informational (for example, Medium risk or Warning-level impact only) |
+
+The Check Run summary includes:
+
+- **Overall risk level** — the highest risk level found across all analyzed components
+- **Governor limit breakdown** — SOQL, DML, CPU, and heap consumption percentages for affected triggers and classes
+- **Affected components** — a count of Breaking, Warning, and Safe impacts from the what-if analysis
+- **Top hotspots** — the specific classes or triggers consuming the most governor limit budget
+- **Recommendations** — AI-generated suggestions for the highest-priority issues
+
+Click **Details** on any Check Run in GitHub to see the full report, including the complete callchain breakdown and the list of breaking changes with their specific reasons.
+
+## Feature flags
+
+The GitHub integration and its associated analysis features are gated by feature flags that your Synapse account team enables per tenant. If you don't see GitHub options in your project settings, reach out to confirm your tenant has the following flags enabled:
+
+| Feature | Flag key |
+|---------|----------|
+| GitHub App authentication | `github_app_auth` |
+| Governor limit analysis | `salesforce_mcp_governor_tool` |
+| What-if impact analysis | `salesforce_mcp_whatif_tool` |
+
+<Note>
+  Synapse recommends enabling governor analysis and what-if analysis first (both are read-only), then adding fix generation (`salesforce_mcp_fix_tool`) once your team is comfortable with the workflow, since fix generation produces code changes that require review before applying.
+</Note>
+
+## Troubleshooting
+
+**The Check Run doesn't appear on my PR**
+
+- Confirm the webhook is registered: go to your GitHub repo's **Settings → Webhooks** and check that a Synapse webhook is listed and shows recent deliveries
+- Verify the repository is connected in your Synapse project settings
+- Check that the GitHub authentication token or App installation is still active in **Settings → Connections**
+
+**The check fails with "metadata not indexed"**
+
+- The MIE dependency graph needs to be populated before analysis can run. Go to your Synapse project, open the Metadata tab, and trigger a sync. Then re-run the analysis by pushing a new commit to the PR.
+
+**The check always passes even though I have known issues**
+
+- Confirm the governor analysis and what-if feature flags are enabled for your tenant
+- Verify the org connected to your Synapse project is the same org your Salesforce source deploys to — if they're different, the dependency graph won't match the code in the PR

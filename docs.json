@@ -1,0 +1,90 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Synapse",
+  "theme": "luma",
+
+  "colors": {
+    "primary": "#0c1424",
+    "dark": "#0c1424"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/cn-choc-milk/synapse-architect-nexus"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "index",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/ai-agents",
+              "features/action-plans",
+              "features/metadata-intelligence",
+              "features/impact-analysis",
+              "features/workflow-builder"
+            ]
+          },
+          {
+            "group": "Salesforce",
+            "pages": [
+              "salesforce/connecting-orgs",
+              "salesforce/metadata-sync",
+              "salesforce/governor-limits",
+              "salesforce/cicd-integration"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/llm-providers",
+              "configuration/mcp-server",
+              "configuration/integrations"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "troubleshooting",
+              "faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/rate-limits"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/action-plans",
+              "api/projects",
+              "api/metadata",
+              "api/agents",
+              "api/threads"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

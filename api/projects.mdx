@@ -1,0 +1,225 @@
+---
+title: "Projects API — create, budgets, and org standards rules"
+description: "Create projects with Salesforce and GitHub connections, manage monthly budget caps, and configure per-project org standards through the Synapse v2 API."
+---
+
+Projects are the top-level container for all work in Synapse. Each project links to one or more Salesforce orgs and GitHub repositories, carries a monthly budget cap, and enforces org standards that propagate to the Sentinel governance gate. The endpoints below let you create projects atomically with their connections, inspect and update budget state, and manage org standards.
+
+All endpoints require a JWT Bearer token. The base URL is `https://api.synapse-architect.com/api/v2`.
+
+---
+
+## Create a project with connections
+
+**`POST /api/v2/projects/create-with-connections`**
+
+Creates a new project and links Salesforce and GitHub connections in a single atomic operation. If you already have a project and only need to add connections, include `project_id` in the body — the endpoint skips project creation and links to the existing record instead.
+
+On partial failure the response still returns `200` but includes a `errors` array describing which steps failed.
+
+<ParamField body="project_id" type="string (uuid)">
+  Existing project ID. When provided, the endpoint operates in "link only" mode and skips project creation.
+</ParamField>
+
+<ParamField body="name" type="string">
+  Display name for the new project (required when creating, ignored in link-only mode).
+</ParamField>
+
+<ParamField body="salesforce_connection_id" type="string">
+  Composio connection ID for the Salesforce org to link.
+</ParamField>
+
+<ParamField body="github_connection_id" type="string">
+  Composio connection ID for the GitHub repository to link.
+</ParamField>
+
+<ParamField body="budget_cap_usd" type="number">
+  Initial monthly budget cap in USD. You can update this later with `PATCH /projects/:id/budget`.
+</ParamField>
+
+<CodeGroup>
+```bash Create a new project
+curl -X POST "https://api.synapse-architect.com/api/v2/projects/create-with-connections" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q3 Portal Rebuild",
+    "salesforce_connection_id": "sf-conn-uuid",
+    "github_connection_id": "gh-conn-uuid",
+    "budget_cap_usd": 500
+  }'
+```
+
+```bash Link connections to existing project
+curl -X POST "https://api.synapse-architect.com/api/v2/projects/create-with-connections" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": "proj-uuid",
+    "salesforce_connection_id": "sf-conn-uuid",
+    "github_connection_id": "gh-conn-uuid"
+  }'
+```
+
+```json Example response
+{
+  "project_id": "proj-uuid",
+  "salesforce_linked": true,
+  "github_linked": true,
+  "errors": []
+}
+```
+</CodeGroup>
+
+<ResponseField name="project_id" type="string (uuid)">ID of the created or updated project.</ResponseField>
+<ResponseField name="salesforce_linked" type="boolean">Whether the Salesforce connection was successfully linked.</ResponseField>
+<ResponseField name="github_linked" type="boolean">Whether the GitHub connection was successfully linked.</ResponseField>
+<ResponseField name="errors" type="array">Per-step error details on partial failure. Empty on full success.</ResponseField>
+
+---
+
+## Get budget status
+
+**`GET /api/v2/projects/:id/budget-status`**
+
+Returns current-month spend for the project, including how much budget remains and whether the project is over cap.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/v2/projects/proj-uuid/budget-status" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "budget_cap_usd": 500.00,
+  "spent_usd": 134.72,
+  "remaining_usd": 365.28,
+  "execution_count": 12,
+  "period_start": "2026-05-01T00:00:00Z",
+  "period_end": "2026-05-31T23:59:59Z",
+  "reset_date": "2026-06-01T00:00:00Z",
+  "over_budget": false
+}
+```
+</CodeGroup>
+
+<ResponseField name="budget_cap_usd" type="number">Configured monthly cap in USD. `null` if no cap is set.</ResponseField>
+<ResponseField name="spent_usd" type="number">Total credits consumed in the current billing period.</ResponseField>
+<ResponseField name="remaining_usd" type="number">Cap minus spend. `null` when no cap is set.</ResponseField>
+<ResponseField name="execution_count" type="number">Number of execution sessions run this period.</ResponseField>
+<ResponseField name="period_start" type="string (ISO 8601)">Start of the current billing window.</ResponseField>
+<ResponseField name="period_end" type="string (ISO 8601)">End of the current billing window.</ResponseField>
+<ResponseField name="reset_date" type="string (ISO 8601)">Date the period resets.</ResponseField>
+<ResponseField name="over_budget" type="boolean">`true` when `spent_usd` exceeds `budget_cap_usd`.</ResponseField>
+
+---
+
+## Update budget cap
+
+**`PATCH /api/v2/projects/:id/budget`**
+
+Sets or clears the monthly budget cap. Pass `null` to remove the cap entirely.
+
+<ParamField body="budget_cap_usd" type="number | null" required>
+  New monthly cap in USD, or `null` to remove the cap.
+</ParamField>
+
+<CodeGroup>
+```bash Set a cap
+curl -X PATCH "https://api.synapse-architect.com/api/v2/projects/proj-uuid/budget" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_cap_usd": 750}'
+```
+
+```bash Remove the cap
+curl -X PATCH "https://api.synapse-architect.com/api/v2/projects/proj-uuid/budget" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_cap_usd": null}'
+```
+</CodeGroup>
+
+<Note>
+  Budget cap changes take effect immediately. If the project is already over the new cap, the `over_budget` field on `/budget-status` will reflect this on the next call.
+</Note>
+
+---
+
+## Get org standards
+
+**`GET /api/v2/projects/:id/org-standards`**
+
+Fetches the current org standards configuration for a project. Returns `null` if no standards have been configured yet.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/v2/projects/proj-uuid/org-standards" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "data": {
+    "id": "standards-uuid",
+    "standards": {
+      "naming_conventions": { "apex_classes": "PascalCase" },
+      "test_coverage_minimum": 85,
+      "prohibited_patterns": ["System.debug in production"]
+    },
+    "updated_at": "2026-04-10T09:00:00Z"
+  }
+}
+```
+</CodeGroup>
+
+<ResponseField name="data" type="object | null">
+  The standards record, or `null` if none exist.
+  <Expandable title="data object">
+    <ResponseField name="id" type="string (uuid)">Record identifier.</ResponseField>
+    <ResponseField name="standards" type="object">Structured standards configuration. Shape is user-defined.</ResponseField>
+    <ResponseField name="updated_at" type="string (ISO 8601)">Last-updated timestamp.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Upsert org standards
+
+**`PATCH /api/v2/projects/:id/org-standards`**
+
+Creates or replaces the org standards for a project. Once saved, these rules are applied automatically to all agent executions in the project.
+
+<ParamField body="standards" type="object" required>
+  Structured standards definition. The shape is user-defined and stored verbatim.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH "https://api.synapse-architect.com/api/v2/projects/proj-uuid/org-standards" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "standards": {
+      "naming_conventions": { "apex_classes": "PascalCase" },
+      "test_coverage_minimum": 85,
+      "prohibited_patterns": ["System.debug in production"]
+    }
+  }'
+```
+
+```json Example response
+{
+  "data": {
+    "id": "standards-uuid",
+    "standards": { ... },
+    "updated_at": "2026-05-14T10:00:00Z"
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+  Standards are applied atomically — if the save fails, the previous configuration remains active. This ensures your governance rules are always in a consistent state.
+</Note>

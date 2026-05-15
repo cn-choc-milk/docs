@@ -1,0 +1,112 @@
+{
+  "projectType": "saas",
+  "projectName": "Synapse",
+  "projectDescription": "An AI-powered Salesforce development platform that automates code generation, impact analysis, and multi-agent orchestration for Salesforce teams.",
+  "theme": "luma",
+  "primaryColor": "#0c1424",
+  "lightColor": null,
+  "darkColor": "#0c1424",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/ai-agents",
+              "features/action-plans",
+              "features/metadata-intelligence",
+              "features/impact-analysis",
+              "features/workflow-builder"
+            ]
+          },
+          {
+            "group": "Salesforce",
+            "pages": [
+              "salesforce/connecting-orgs",
+              "salesforce/metadata-sync",
+              "salesforce/governor-limits",
+              "salesforce/cicd-integration"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/llm-providers",
+              "configuration/mcp-server",
+              "configuration/integrations"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "troubleshooting",
+              "faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/rate-limits"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/action-plans",
+              "api/projects",
+              "api/metadata",
+              "api/agents",
+              "api/threads"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI Agent Team (AXIOM, FORGE, SYNTH, GUARDIAN, SENTINEL) for autonomous Salesforce development",
+    "POD Execution — isolated E2B sandbox environments that push results to Git branches",
+    "Salesforce Metadata Intelligence with governor limit analysis and dependency graphs",
+    "Action Plan Orchestration — visual multi-agent workflow planning and execution",
+    "Impact Analysis Pro — three-mode analysis (Quick, Smart, Comprehensive) before deployments",
+    "Workflow Builder — node-based visual canvas for automation design",
+    "MCP Server — Model Context Protocol integration for Claude Desktop and Cursor IDE",
+    "LLM Provider Configuration — bring-your-own API keys for OpenAI, Anthropic, and others",
+    "GitHub CI/CD Integration — automated analysis triggered on pull requests",
+    "Discovery Tracks — guided requirements gathering for Salesforce implementations"
+  ],
+  "publicApiSurface": [
+    "POST /api/v2/action-plans — create an action plan",
+    "GET /api/v2/action-plans — list action plans",
+    "POST /api/v2/board/pod-execute — launch POD execution for task IDs",
+    "GET /api/v2/execution-sessions/:id/receipt — fetch immutable execution receipt",
+    "POST /api/v2/execution-sessions/:id/file-reviews — submit per-file review decisions",
+    "POST /api/v2/projects/create-with-connections — create project with Salesforce/GitHub links",
+    "GET /api/v2/projects/:id/budget-status — get current-month credit spend",
+    "POST /api/mie/ingest — ingest Salesforce metadata",
+    "GET /api/mie/v1/graph — get component dependency graph",
+    "POST /api/mie/prd/generate — generate PRD from metadata",
+    "POST /api/ai/generate — generate Salesforce component from prompt",
+    "GET /api/composio/connected-accounts — list Salesforce connections",
+    "POST /api/composio/initiate-connection — start OAuth connection flow",
+    "GET /api/threads — list conversation threads",
+    "POST /api/threads/:id/messages — send a message to an agent thread"
+  ]
+}

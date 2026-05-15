@@ -1,0 +1,113 @@
+---
+title: "Orchestrate multi-agent workflows with Action Plans"
+description: "Design Salesforce workflows on a visual canvas, with smart agent assignment, human approval gates, Jira sync, and live execution tracking."
+---
+
+Action Plans give you a visual way to design, assign, and run multi-agent workflows. You build your plan on a canvas—connecting objectives, epics, user stories, tasks, and approval steps—then switch to Execution mode to watch agents work through it in real time. The same plan can be paused, resumed, or handed off to a reviewer at any stage.
+
+## Planning vs. execution modes
+
+Action Plans has two distinct modes so that design and runtime concerns stay separate.
+
+<Tabs>
+  <Tab title="Planning mode">
+    Planning mode is where you design your workflow. The interface has three sections:
+
+    - **Saved Plans panel** (left): Browse, search, and manage your saved action plans.
+    - **Canvas** (center): A drag-and-drop surface where you create nodes and connect them with dependency arrows.
+    - **Properties panel** (right): Configure the selected node—its title, description, agent assignment, priority, and approval settings.
+
+    In Planning mode you can create and connect nodes, assign agents, set priorities, configure approval gates, and validate the plan before handing it off to execution. No agents run while you are in this mode.
+  </Tab>
+  <Tab title="Execution mode">
+    Execution mode is where the plan runs. The canvas shifts focus to monitoring: each node shows its live status (gray for not started, blue with a spinner for in progress, green for complete, red for blocked or failed).
+
+    The right panel shows execution controls—**Execute**, **Pause**, and **Reset**—along with a progress bar and task counter. The left panel surfaces per-node details: which agent is running, what it has logged so far, and how long it has been active.
+
+    You can pause execution at any time. Completed nodes retain their status; in-progress nodes finish before the pause takes effect.
+  </Tab>
+</Tabs>
+
+## Canvas basics
+
+The canvas supports several node types, which map directly to levels in a standard project hierarchy:
+
+| Node type | Purpose | Jira equivalent |
+|-----------|---------|-----------------|
+| **Objective** | High-level goal | Epic |
+| **Epic** | Large feature set | Epic/Initiative |
+| **User story** | User-centric feature | Story |
+| **Task** | Specific implementation work | Task/Subtask |
+| **Approval step** | Human sign-off gate | — |
+
+Connections between nodes represent dependencies: a source node must complete before its target can start. Drag from the output handle on the right side of a node and drop it onto the input handle on the left side of the next node. A red line means the connection would create a circular dependency and cannot be saved.
+
+## Create your first action plan
+
+<Steps>
+  <Step title="Navigate to Action Plans">
+    Click **Action Plans** in the left navigation. You land in Planning mode by default.
+  </Step>
+  <Step title="Create a new plan">
+    Click **+ New Action Plan**, enter a name and an optional description, then click **Create**. The canvas opens empty and ready for nodes.
+  </Step>
+  <Step title="Add your first node">
+    Click anywhere on the canvas. A node creation dialog appears. Select a node type, enter a title and description, then click **Save**. Your node appears on the canvas.
+  </Step>
+  <Step title="Connect nodes">
+    Hover over a node until the output handle appears on its right edge. Drag from that handle to the input handle on the left edge of a dependent node. The arrow that appears represents the dependency relationship.
+  </Step>
+  <Step title="Assign agents to task nodes">
+    Click a task node to open the properties panel. Under **Agent Assignment**, review the suggested agents and their match scores, then click one to assign it. Every task node must have an assigned agent before execution can begin.
+  </Step>
+  <Step title="Add approval steps where needed">
+    Drag an **Approval Step** node from the node palette and connect it after any task that requires human sign-off. Open the node properties to set the approver list and any instructions the reviewer should see.
+  </Step>
+  <Step title="Validate and start execution">
+    Click **Validate Plan** in the top-right corner. The validator checks for missing titles, unassigned tasks, and circular dependencies. Fix any errors it flags, then click **Start Execution** to switch to Execution mode and confirm the transition.
+  </Step>
+</Steps>
+
+## Agent assignment and match scores
+
+When you select a task node, the **Agent Assignment** panel shows a ranked list of agents alongside their **match scores**. The score reflects how well an agent's capabilities align with the task's title and description—higher is better. Click the agent you want to assign; the panel shows the reasoning behind the score so you can evaluate the recommendation.
+
+<Tip>
+  If you're not sure which agent to pick, start with the top-ranked suggestion. You can always reassign before execution starts by returning to Planning mode.
+</Tip>
+
+## Approval workflows
+
+Approval steps pause execution and wait for a named reviewer to either approve or reject before the plan continues. This gives you human-in-the-loop control over sensitive phases—security reviews, production deployments, architectural decisions—without breaking the automated flow.
+
+When execution reaches an approval node:
+
+1. The node status changes to **Blocked** (shown in amber on the canvas).
+2. The designated approver receives a notification.
+3. The approver reviews the completed work and clicks **Approve** or **Reject** in the node detail panel.
+4. If approved, execution resumes from that node. If rejected, the plan pauses and you decide how to proceed.
+
+<Note>
+  At least one approver must be listed on every approval node. The plan validator will block execution if any approval node has no approvers configured.
+</Note>
+
+## Jira sync
+
+If you have Jira credentials configured in **Settings → Integrations**, Synapse can sync your action plan bidirectionally with a Jira project. Nodes map to Jira issue types—objectives and epics become Epics, user stories become Stories, tasks become Tasks—and status changes flow both ways.
+
+To enable sync, open your action plan's settings and toggle **Jira Sync** on. Select the target Jira project and configure the field mapping. Once enabled, changes you make in Synapse appear in Jira within a few seconds, and Jira status updates reflect back on the canvas.
+
+## Real-time execution tracking
+
+While a plan is running, the canvas updates live. Each node's border color and icon change to reflect its current status:
+
+| Status | Appearance | Meaning |
+|--------|-----------|---------|
+| Not started | Gray outline | Ready but not yet running |
+| In progress | Blue outline, spinner | Agent is actively working |
+| Completed | Green outline, check | Successfully finished |
+| Blocked | Amber outline, warning | Waiting for approval or dependency |
+| Failed | Red outline, X | Execution error—see the node log |
+| Skipped | Yellow outline, slash | Manually skipped by a team member |
+
+Click any node during execution to open its detail panel and view the agent's live log output, including the commands it ran, files it created, and any errors it encountered.

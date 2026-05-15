@@ -1,0 +1,84 @@
+---
+title: "Build automation pipelines with the Workflow Builder"
+description: "Design automation workflows on a node-based canvas, connect them to Synapse agents, and monitor every run in real time from the dashboard."
+---
+
+The Workflow Builder lets you design automation workflows visually rather than writing orchestration code. You place nodes on a canvas, connect them with edges that define the execution path, and the platform runs the resulting workflow on your behalf. Workflows can trigger agents, call external APIs, branch on conditions, and report their status back to the Synapse dashboard as they run.
+
+## The node-based canvas
+
+Every workflow is composed of **nodes** connected by **edges**. A node is a single unit of work—an action, a decision, a trigger, or an agent call. An edge is an arrow that connects two nodes and tells the runtime which node to execute next.
+
+The canvas works like this:
+
+- **Click** anywhere on the empty canvas to create a new node.
+- **Drag** a node to reposition it.
+- **Hover** over a node to reveal its output handle (a small circle on its right edge). Drag from that handle to another node's input handle to create an edge.
+- **Click** an existing node or edge to open its properties in the right panel.
+- **Delete** a selected node or edge with the `Backspace` or `Delete` key.
+
+Use **Cmd/Ctrl + A** to select all nodes, and **Cmd/Ctrl + D** to duplicate a selected node.
+
+## Node types
+
+| Node type | What it does |
+|-----------|-------------|
+| **Trigger** | Starts the workflow. Can be a schedule, a webhook event, a Salesforce platform event, or a manual run. |
+| **Agent task** | Runs a Synapse agent (AXIOM, FORGE, SENTINEL, etc.) against a prompt or task description and captures the result. |
+| **Condition** | Evaluates an expression and routes execution down a true or false branch. |
+| **HTTP request** | Calls an external API and passes the response to the next node. |
+| **Transform** | Reshapes or filters data between nodes using a JavaScript expression. |
+| **Wait** | Pauses execution for a specified duration or until an external signal arrives. |
+| **End** | Marks a terminal point in the workflow. A workflow can have multiple End nodes for different outcomes. |
+
+## Create a workflow
+
+<Steps>
+  <Step title="Open the Workflow Builder">
+    Click **Workflows** in the left navigation, then click **New Workflow**.
+  </Step>
+  <Step title="Name your workflow">
+    Enter a name and an optional description. Click **Create**. The canvas opens with an empty Trigger node already placed.
+  </Step>
+  <Step title="Configure the trigger">
+    Click the Trigger node to open its properties. Choose how the workflow starts:
+    - **Manual** — run it on demand from the dashboard.
+    - **Schedule** — provide a cron expression (for example, `0 9 * * 1` for every Monday at 9 AM).
+    - **Webhook** — Synapse generates a unique URL; POST to it to fire the workflow.
+    - **Salesforce event** — subscribe to a Salesforce Platform Event topic.
+  </Step>
+  <Step title="Add nodes">
+    Click the canvas to add nodes and configure each one in the properties panel. For agent task nodes, select the agent you want to run and write a task description. The agent will receive that description plus any data flowing into the node from upstream nodes.
+  </Step>
+  <Step title="Connect nodes">
+    Drag from the output handle of each node to the input handle of the next. For Condition nodes, there are two output handles—one for the true branch and one for the false branch. Connect each to the appropriate downstream node.
+  </Step>
+  <Step title="Save and activate">
+    Click **Save** to store the workflow as a draft. When you're ready to run it, toggle the **Active** switch in the top bar. Active workflows listen for their trigger and execute automatically.
+  </Step>
+</Steps>
+
+## Connecting to agents and Mastra
+
+Agent task nodes connect to the same agent fleet available in the Agent Hub and action plans. When a workflow reaches an agent task node, Synapse invokes the configured agent through the Mastra framework—the same POD execution environment described on the [AI agents](/features/ai-agents) page. The agent receives the task description plus any context passed from earlier nodes, completes its work in an isolated sandbox, and returns its output as structured data that flows into the next node.
+
+You can chain multiple agent task nodes in sequence—for example, running AXIOM to generate a technical design, then FORGE to generate code from that design, then SENTINEL to validate the result—without writing any glue code.
+
+<Note>
+  Workflows that include agent task nodes consume execution credits in the same way as action plan POD sessions. Each agent invocation spins up a sandboxed environment for the duration of the task.
+</Note>
+
+## Execution tracking
+
+Every workflow run is recorded and accessible from the **Runs** tab on the workflow detail page. Each run shows:
+
+- **Run status**: In progress, completed, or failed.
+- **Node-level status**: Which nodes completed successfully, which failed, and which were skipped by a condition branch.
+- **Logs**: The output from each node, including agent logs for agent task nodes, HTTP response bodies for HTTP request nodes, and evaluated expressions for condition and transform nodes.
+- **Duration**: Total run time and per-node time.
+
+If a workflow fails, click the failed node in the run view to see the error message and the input data that caused it. Fix the issue in the workflow editor and re-run from that point or from the beginning.
+
+<Tip>
+  Use a **Wait** node combined with a webhook trigger to build approval steps into your workflows. The workflow pauses at the Wait node and resumes as soon as an external system—or a person clicking a link in a notification—sends a POST to the resume URL.
+</Tip>

@@ -1,0 +1,99 @@
+---
+title: "Sync Salesforce metadata to keep your analysis current"
+description: "Trigger a metadata sync to pull your org's components and dependency graph into Synapse so analysis tools have current, accurate data to work with."
+---
+
+Synapse builds its analysis — governor limit tracing, what-if impact scenarios, and AI recommendations — on top of a local index of your Salesforce org's metadata. This index, called the Metadata Intelligence Engine (MIE), maps every component in your org and the relationships between them. Before you can run analysis, you need to sync your org's metadata into Synapse. You should also re-sync after any deployment that adds, changes, or removes components.
+
+## What gets synced
+
+A metadata sync pulls the following from your connected Salesforce org:
+
+| Category | What's included |
+|----------|----------------|
+| **Apex components** | Apex classes, Apex triggers |
+| **Declarative automation** | Flows, Process Builders, Workflow rules |
+| **UI components** | Lightning Web Components, Aura components, Visualforce pages |
+| **Schema** | Custom objects, custom fields, validation rules |
+| **Configuration** | Permission sets, profiles, custom metadata types, custom labels |
+| **Other** | Layouts, reports, dashboards, static resources, email templates |
+
+In addition to component definitions, Synapse extracts **dependency relationships** — for example, which Apex classes a trigger calls, which fields a flow references, or which components share a utility class. These relationships form the dependency graph that powers what-if impact analysis.
+
+Synapse also reads **governor limit signals** during the sync: SOQL query counts, DML statement counts, CPU time estimates, and heap usage across your automation callchains. These are stored alongside the dependency graph and displayed in the governor limit dashboard.
+
+## Trigger a sync from the UI
+
+<Steps>
+  <Step title="Open your project">
+    Navigate to the Synapse project linked to the Salesforce org you want to sync. If you haven't created a project yet, see the [getting started guide](/quickstart).
+  </Step>
+
+  <Step title="Go to the Metadata tab">
+    In the project sidebar, click **Metadata** to open the Metadata Explorer.
+  </Step>
+
+  <Step title="Select your org">
+    Use the org selector at the top of the page to choose the connected Salesforce org you want to sync. If no orgs appear, go to **Settings → Connections** to add one first.
+  </Step>
+
+  <Step title="Start the sync">
+    Click **Sync metadata**. Synapse begins fetching your org's components and building the dependency graph. A progress indicator shows the sync status in real time.
+  </Step>
+</Steps>
+
+## Sync status
+
+While a sync is running, the Metadata Explorer shows a **Syncing** badge next to the org name. Once complete, the badge changes to **Synced** and displays the timestamp of the last successful sync.
+
+If the sync fails, you'll see an **Error** status with a short description. Common causes include:
+
+- The OAuth token for the connected org has expired — go to **Settings → Connections** and refresh it, then retry
+- The Salesforce API is temporarily unavailable — wait a few minutes and try again
+- Your Salesforce user lacks permission to read certain metadata types — ask your org admin to check API access
+
+## Trigger a sync via API
+
+You can also start a sync programmatically, for example as part of a deployment pipeline:
+
+```bash
+curl -X POST https://your-synapse-host/api/v1/metadata/sync \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-api-token>" \
+  -H "X-Tenant-ID: <your-tenant-id>" \
+  -d '{
+    "org_id": "<your-connected-org-id>",
+    "project_id": "<your-project-id>"
+  }'
+```
+
+A successful response returns a sync job ID you can use to poll for status:
+
+```json
+{
+  "success": true,
+  "sync_job_id": "sync-job-abc123",
+  "status": "running"
+}
+```
+
+<Note>
+  The `POST /api/v1/metadata/sync` endpoint requires both a valid `Authorization` bearer token and an `X-Tenant-ID` header. Authentication tokens are available from your Synapse account settings under **API keys**.
+</Note>
+
+## When to re-sync
+
+The MIE dependency graph reflects your org at the time of the last sync. Analysis results may be inaccurate if your org has changed since then. Re-sync after:
+
+- **Deploying a change set or package** — new or modified components won't appear in analysis until synced
+- **Creating or deleting custom fields or objects** — what-if impact analysis uses the dependency graph, so stale data means incomplete results
+- **Installing or upgrading a managed package** — package components need to be indexed before they appear in callchain analysis
+- **Major flow or process builder changes** — declarative automation is part of the governor limit callchain
+
+<Warning>
+  Running governor limit analysis or what-if impact analysis against stale metadata can produce results that no longer reflect your org's real state. Always re-sync after a deployment before relying on analysis results for go/no-go decisions.
+</Warning>
+
+## What happens to previous sync data
+
+Each sync replaces the previous metadata snapshot for that org. Synapse does not keep a historical archive of past syncs — if you need to compare the state of your org before and after a deployment, complete your analysis before deploying, then sync again afterward.

@@ -1,0 +1,232 @@
+---
+title: "Threads API — manage AI conversations and messages"
+description: "Create and manage conversation threads, send messages to AI agents, and retrieve full message history using the Synapse Threads API."
+---
+
+Threads give you a persistent, structured way to have multi-turn conversations with Synapse's AI agents. Each thread holds an ordered list of messages and can represent a planning session, a code review discussion, or any other contextual exchange. The Threads API lets you list, create, and retrieve threads, and add or read messages within them.
+
+All endpoints require a JWT Bearer token. The base URL is `https://api.synapse-architect.com/api`.
+
+---
+
+## List threads
+
+**`GET /api/threads`**
+
+Returns a paginated list of conversation threads for the authenticated user.
+
+<ParamField query="limit" type="number" default="20">
+  Maximum number of threads to return per page.
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of threads to skip for pagination.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/threads?limit=20&offset=0" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "threads": [
+    {
+      "id": "thread-uuid",
+      "title": "Case deflection portal planning",
+      "created_at": "2026-05-14T09:00:00Z",
+      "updated_at": "2026-05-14T10:30:00Z",
+      "messages": []
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+</CodeGroup>
+
+<ResponseField name="threads" type="array">Array of thread objects.</ResponseField>
+<ResponseField name="total" type="number">Total number of threads available (before pagination).</ResponseField>
+<ResponseField name="limit" type="number">Page size applied.</ResponseField>
+<ResponseField name="offset" type="number">Offset applied.</ResponseField>
+
+---
+
+## Create a thread
+
+**`POST /api/threads`** — Returns `201 Created`.
+
+Creates a new conversation thread, optionally seeded with an initial message.
+
+<ParamField body="title" type="string">
+  A short label for the thread. Useful for organizing threads in the UI.
+</ParamField>
+
+<ParamField body="initial_message" type="string">
+  If provided, this message is added to the thread as the first user message at creation time.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/threads" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Case deflection portal planning",
+    "initial_message": "I want to build a self-service case deflection portal using the existing Case object."
+  }'
+```
+
+```json Example response
+{
+  "id": "thread-uuid",
+  "title": "Case deflection portal planning",
+  "messages": [
+    {
+      "id": "msg-uuid",
+      "role": "user",
+      "content": "I want to build a self-service case deflection portal using the existing Case object.",
+      "created_at": "2026-05-14T09:00:00Z"
+    }
+  ],
+  "created_at": "2026-05-14T09:00:00Z",
+  "updated_at": "2026-05-14T09:00:00Z"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string (uuid)">Unique identifier for the new thread.</ResponseField>
+<ResponseField name="title" type="string">Thread title.</ResponseField>
+<ResponseField name="messages" type="array">Messages in the thread. Includes the initial message if one was provided.</ResponseField>
+<ResponseField name="created_at" type="string (ISO 8601)">Creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string (ISO 8601)">Last-modified timestamp.</ResponseField>
+
+---
+
+## Get a thread
+
+**`GET /api/threads/:thread_id`**
+
+Retrieves a specific thread by its ID, including all messages.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/threads/thread-uuid" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "id": "thread-uuid",
+  "title": "Case deflection portal planning",
+  "messages": [
+    {
+      "id": "msg-1",
+      "role": "user",
+      "content": "I want to build a self-service case deflection portal.",
+      "created_at": "2026-05-14T09:00:00Z"
+    },
+    {
+      "id": "msg-2",
+      "role": "assistant",
+      "content": "Let's start by reviewing your existing Case object schema. I'll pull the metadata now.",
+      "created_at": "2026-05-14T09:00:05Z"
+    }
+  ],
+  "created_at": "2026-05-14T09:00:00Z",
+  "updated_at": "2026-05-14T09:00:05Z"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string (uuid)">Thread identifier.</ResponseField>
+<ResponseField name="title" type="string">Thread title.</ResponseField>
+<ResponseField name="messages" type="array">
+  Ordered list of messages in the thread.
+  <Expandable title="message object">
+    <ResponseField name="id" type="string">Message identifier.</ResponseField>
+    <ResponseField name="role" type="string">Author role: `user`, `assistant`, or `system`.</ResponseField>
+    <ResponseField name="content" type="string">Message text.</ResponseField>
+    <ResponseField name="created_at" type="string (ISO 8601)">Timestamp the message was created.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Send a message
+
+**`POST /api/threads/:thread_id/messages`** — Returns `201 Created`.
+
+Appends a new message to the thread. The assistant processes the updated thread and appends a response.
+
+<ParamField body="content" type="string" required>
+  Message text.
+</ParamField>
+
+<ParamField body="role" type="string" default="user">
+  Author role. One of `user` or `assistant`. Defaults to `user`. Only use `assistant` when programmatically injecting context.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/threads/thread-uuid/messages" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Can we also add a knowledge article search to the portal?",
+    "role": "user"
+  }'
+```
+
+```json Example response
+{
+  "id": "msg-uuid",
+  "role": "user",
+  "content": "Can we also add a knowledge article search to the portal?",
+  "created_at": "2026-05-14T10:15:00Z"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string">Identifier of the newly created message.</ResponseField>
+<ResponseField name="role" type="string">Role of the message author.</ResponseField>
+<ResponseField name="content" type="string">Message content.</ResponseField>
+<ResponseField name="created_at" type="string (ISO 8601)">Message creation timestamp.</ResponseField>
+
+---
+
+## List messages in a thread
+
+**`GET /api/threads/:thread_id/messages`**
+
+Returns all messages in a thread in chronological order. Use this to reconstruct the conversation history independently of the full thread object.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/threads/thread-uuid/messages" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+[
+  {
+    "id": "msg-1",
+    "role": "user",
+    "content": "I want to build a self-service case deflection portal.",
+    "created_at": "2026-05-14T09:00:00Z"
+  },
+  {
+    "id": "msg-2",
+    "role": "assistant",
+    "content": "Let's start by reviewing your existing Case object schema.",
+    "created_at": "2026-05-14T09:00:05Z"
+  }
+]
+```
+</CodeGroup>
+
+<Note>
+  The `GET /api/threads/:thread_id` endpoint also includes messages inline. Use this endpoint when you only need messages and want to avoid fetching the full thread object.
+</Note>

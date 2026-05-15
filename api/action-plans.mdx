@@ -1,0 +1,371 @@
+---
+title: "Action Plans API — plans, POD execution, and reviews"
+description: "Manage action plans, trigger POD execution, retrieve execution receipts, submit file reviews, and estimate execution cost with the Synapse v2 API."
+---
+
+Action plans are the primary unit of orchestration in Synapse. You create an action plan to describe a feature or change, and the platform uses it to generate tasks, schedule agent execution, and track progress. The endpoints below cover the full lifecycle — from listing existing plans to triggering a POD execution run and reviewing the results.
+
+All `v2` endpoints are served from `https://api.synapse-architect.com/api/v2`. All endpoints require a JWT Bearer token in the `Authorization` header.
+
+## List action plans
+
+Use this endpoint to retrieve all action plans in a project, with optional filters by status or source type.
+
+<ParamField query="status" type="string">
+  Filter by plan status. Accepted values: `draft`, `planning`, `ready`, `executing`.
+</ParamField>
+
+<ParamField query="source_type" type="string">
+  Filter by origin. Accepted values: `prd`, `manual`, `import`.
+</ParamField>
+
+<ParamField query="project_id" type="string (uuid)">
+  Return only plans belonging to this project.
+</ParamField>
+
+<ParamField query="limit" type="number" default="50">
+  Maximum number of records to return.
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of records to skip for pagination.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.synapse-architect.com/api/v2/action-plans?status=planning&project_id=proj-uuid&limit=10" \
+  -H "Authorization: Bearer <token>"
+```
+</CodeGroup>
+
+**`GET /api/v2/action-plans`**
+
+<ResponseField name="action_plans" type="array">
+  List of action plan objects.
+  <Expandable title="action plan object">
+    <ResponseField name="id" type="string (uuid)">Unique plan identifier.</ResponseField>
+    <ResponseField name="name" type="string">Human-readable plan name.</ResponseField>
+    <ResponseField name="status" type="string">Current lifecycle status.</ResponseField>
+    <ResponseField name="source_type" type="string">Origin of the plan (`prd`, `manual`, `import`).</ResponseField>
+    <ResponseField name="yolo_level" type="number">Automation autonomy level (1–5).</ResponseField>
+    <ResponseField name="current_phase" type="string">Active phase (e.g., `design`, `execution`).</ResponseField>
+    <ResponseField name="overall_progress" type="number">Completion percentage (0–100).</ResponseField>
+    <ResponseField name="created_at" type="string (ISO 8601)">Creation timestamp.</ResponseField>
+    <ResponseField name="updated_at" type="string (ISO 8601)">Last-modified timestamp.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  <Expandable title="pagination">
+    <ResponseField name="limit" type="number">Page size used.</ResponseField>
+    <ResponseField name="offset" type="number">Offset applied.</ResponseField>
+    <ResponseField name="hasMore" type="boolean">Whether additional records exist.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Create an action plan
+
+**`POST /api/v2/action-plans`** — Returns `201 Created`.
+
+<ParamField body="name" type="string" required>
+  Display name for the plan.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Free-text description of what the plan delivers.
+</ParamField>
+
+<ParamField body="source_type" type="string" required>
+  Origin of the plan. One of `prd`, `manual`, or `import`.
+</ParamField>
+
+<ParamField body="source_content" type="string">
+  Raw PRD or specification content used to seed task generation.
+</ParamField>
+
+<ParamField body="project_id" type="string (uuid)" required>
+  Project this plan belongs to.
+</ParamField>
+
+<ParamField body="yolo_level" type="number">
+  Automation autonomy level (1–5). Higher values allow the platform to proceed with fewer human approval gates.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/v2/action-plans" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Customer Portal MVP",
+    "description": "Build the initial customer self-service portal",
+    "source_type": "prd",
+    "source_content": "# PRD: Customer Portal\n...",
+    "project_id": "proj-uuid",
+    "yolo_level": 3
+  }'
+```
+
+```json Example response
+{
+  "id": "ap-uuid",
+  "name": "Customer Portal MVP",
+  "status": "draft",
+  "source_type": "prd",
+  "yolo_level": 3,
+  "created_at": "2026-05-14T10:00:00Z"
+}
+```
+</CodeGroup>
+
+---
+
+## Get an action plan
+
+**`GET /api/v2/action-plans/:id`**
+
+Returns the full plan record including all tasks and their current status.
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/v2/action-plans/ap-uuid" \
+  -H "Authorization: Bearer <token>"
+```
+
+```json Example response
+{
+  "id": "ap-uuid",
+  "name": "Customer Portal MVP",
+  "status": "planning",
+  "source_type": "prd",
+  "yolo_level": 3,
+  "current_phase": "design",
+  "overall_progress": 25,
+  "tasks": [...],
+  "created_at": "2026-05-14T10:00:00Z"
+}
+```
+</CodeGroup>
+
+<ResponseField name="id" type="string (uuid)">Plan identifier.</ResponseField>
+<ResponseField name="tasks" type="array">Ordered list of generated tasks.</ResponseField>
+
+---
+
+## Update an action plan
+
+**`PATCH /api/v2/action-plans/:id`**
+
+Updates mutable fields on an existing plan. Only include the fields you want to change.
+
+<ParamField body="name" type="string">New display name.</ParamField>
+<ParamField body="description" type="string">Updated description.</ParamField>
+<ParamField body="status" type="string">Transition the plan to a new status.</ParamField>
+<ParamField body="yolo_level" type="number">Updated autonomy level (1–5).</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH "https://api.synapse-architect.com/api/v2/action-plans/ap-uuid" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "ready", "yolo_level": 4}'
+```
+</CodeGroup>
+
+---
+
+## Launch POD execution
+
+**`POST /api/v2/board/pod-execute`**
+
+Dispatches an execution run for one or more board tasks. Authentication is via JWT Bearer token; the tenant is derived automatically from your token.
+
+<ParamField body="project_id" type="string (uuid)" required>
+  Project context for the execution run.
+</ParamField>
+
+<ParamField body="task_ids" type="array" required>
+  List of task UUIDs to include in this execution run.
+</ParamField>
+
+<ParamField body="pod_config" type="object">
+  Optional POD configuration overrides (sandbox resources, timeouts, etc.).
+</ParamField>
+
+<ParamField body="governance_tier" type="string">
+  Governance tier to apply. Overrides the project default.
+</ParamField>
+
+<ParamField body="yolo_level" type="number">
+  Autonomy level for this run. Overrides the plan default.
+</ParamField>
+
+<ParamField body="max_tasks_per_session" type="number">
+  Limit how many tasks run concurrently in the session.
+</ParamField>
+
+<ParamField body="initiated_by" type="string (uuid)">
+  User UUID recorded as the execution initiator.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/v2/board/pod-execute" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": "proj-uuid",
+    "task_ids": ["task-1", "task-2"],
+    "yolo_level": 3,
+    "initiated_by": "user-uuid"
+  }'
+```
+
+```json Example response
+{
+  "session_id": "session-uuid",
+  "execution_id": "exec-uuid",
+  "action_plan_id": "ap-uuid",
+  "total_tasks": 2,
+  "skipped_tasks": 0,
+  "task_mapping": {
+    "task-1": "node-1",
+    "task-2": "node-2"
+  }
+}
+```
+</CodeGroup>
+
+<ResponseField name="session_id" type="string (uuid)">ID of the created execution session.</ResponseField>
+<ResponseField name="execution_id" type="string (uuid)">Internal execution record ID.</ResponseField>
+<ResponseField name="action_plan_id" type="string (uuid)">Action plan used for this run.</ResponseField>
+<ResponseField name="total_tasks" type="number">Number of tasks dispatched.</ResponseField>
+<ResponseField name="skipped_tasks" type="number">Tasks excluded (e.g., already complete).</ResponseField>
+<ResponseField name="task_mapping" type="object">Map of task IDs to ghost plan node IDs.</ResponseField>
+
+---
+
+## Get execution receipt
+
+**`GET /api/v2/execution-sessions/:id/receipt`**
+
+Fetches or generates the immutable execution receipt for a completed session. Returns `202 Accepted` if the session is still running. The receipt is generated on demand for terminal sessions and is locked once created.
+
+Requires: `x-tenant-id` header (tenant-scoped auth).
+
+<CodeGroup>
+```bash cURL
+curl "https://api.synapse-architect.com/api/v2/execution-sessions/session-uuid/receipt" \
+  -H "Authorization: Bearer <token>" \
+  -H "x-tenant-id: tenant-uuid"
+```
+
+```json Example response (complete)
+{
+  "session_id": "session-uuid",
+  "status": "completed",
+  "receipt_hash": "sha256-abc123...",
+  "tasks_completed": 2,
+  "tasks_failed": 0,
+  "generated_at": "2026-05-14T11:30:00Z"
+}
+```
+</CodeGroup>
+
+<Note>
+  A `202` response means the session is still running. Poll again once the session reaches a terminal state (`completed`, `failed`, or `cancelled`).
+</Note>
+
+---
+
+## Submit file reviews
+
+**`POST /api/v2/execution-sessions/:id/file-reviews`**
+
+Submit per-file accept or reject decisions after reviewing the diff produced by an execution session. Rejected files are not reverted automatically — call `POST /apply-reviews` to revert them.
+
+Requires: `x-tenant-id` header.
+
+<ParamField body="reviews" type="array" required>
+  List of per-file review decisions.
+  <Expandable title="review object">
+    <ParamField body="file_path" type="string" required>Relative path of the changed file.</ParamField>
+    <ParamField body="decision" type="string" required>Either `accept` or `reject`.</ParamField>
+    <ParamField body="reviewer_comment" type="string">Optional note attached to the decision.</ParamField>
+  </Expandable>
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/v2/execution-sessions/session-uuid/file-reviews" \
+  -H "Authorization: Bearer <token>" \
+  -H "x-tenant-id: tenant-uuid" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reviews": [
+      {
+        "file_path": "force-app/main/default/classes/ContactController.cls",
+        "decision": "accept"
+      },
+      {
+        "file_path": "force-app/main/default/classes/LegacyHelper.cls",
+        "decision": "reject",
+        "reviewer_comment": "Logic is duplicated — needs refactor first"
+      }
+    ]
+  }'
+```
+</CodeGroup>
+
+---
+
+## Estimate execution cost
+
+**`POST /api/v2/execution-sessions/estimate`**
+
+Returns a pre-execution cost and duration estimate before you commit to a POD run. If you omit `task_count`, Synapse counts tasks directly from the action plan.
+
+Auth: JWT (`req.auth`).
+
+<ParamField body="action_plan_id" type="string (uuid)">
+  Action plan to estimate. If provided and `task_count` is omitted, the API counts tasks automatically.
+</ParamField>
+
+<ParamField body="pod_config" type="object">
+  POD configuration to factor into the estimate (sandbox size, tier, etc.).
+</ParamField>
+
+<ParamField body="task_count" type="number">
+  Manual task count override. Useful when you know the scope without specifying an action plan.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.synapse-architect.com/api/v2/execution-sessions/estimate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action_plan_id": "ap-uuid",
+    "pod_config": { "sandbox_tier": "standard" }
+  }'
+```
+
+```json Example response
+{
+  "estimated_cost_usd": 0.84,
+  "estimated_duration_minutes": 22,
+  "task_count": 8,
+  "breakdown": {
+    "agent_tokens": 0.61,
+    "sandbox_runtime": 0.23
+  }
+}
+```
+</CodeGroup>
+
+<ResponseField name="estimated_cost_usd" type="number">Projected total cost in USD.</ResponseField>
+<ResponseField name="estimated_duration_minutes" type="number">Projected wall-clock execution time.</ResponseField>
+<ResponseField name="task_count" type="number">Number of tasks factored into the estimate.</ResponseField>
+<ResponseField name="breakdown" type="object">Cost split by component (tokens, sandbox, etc.).</ResponseField>

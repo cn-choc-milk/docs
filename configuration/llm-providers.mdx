@@ -1,0 +1,145 @@
+---
+title: 'Configure LLM providers for your Synapse workspace'
+description: 'Bring your own API key to Synapse so AI agents use your billing account, quota, and data agreements instead of a shared platform default.'
+---
+
+Synapse lets you connect your own API keys for the AI providers you already use. When you add a key, every AI agent in your workspace draws from your account — your billing, your quota, and where the provider supports it, your data processing agreements. If you have not added a key, agents still work using the platform's shared defaults, but billing goes through Synapse's credentials rather than yours.
+
+## Supported providers
+
+You can add credentials for any of the following providers. Each has its own model catalog and key format.
+
+| Provider | Key format | Example models |
+|----------|-----------|----------------|
+| OpenAI | Starts with `sk-` | `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o` |
+| Anthropic | Starts with `sk-ant-` | `claude-sonnet-4-6`, `claude-3-5-sonnet-20241022` |
+| Google | 39-character alphanumeric string | `gemini-1.5-pro`, `gemini-1.5-flash` |
+| OpenRouter | Starts with `sk-or-v1-` | `openai/gpt-4o-mini`, `anthropic/claude-3-5-sonnet-20241022` |
+| Mistral | 32-character alphanumeric string | `mistral-large-latest`, `mistral-7b-instruct` |
+| Ollama | Any non-empty value | `llama3.1`, `mistral` (local models) |
+
+<Note>
+OpenRouter is a single key that routes to dozens of models across multiple providers — OpenAI, Anthropic, Meta, Mistral, and more. It simplifies billing to one invoice and lets you switch model families without adding separate credentials for each vendor. See the cost trade-offs in the [Cost visibility](#cost-visibility) section below.
+</Note>
+
+## How provider selection works
+
+When an agent makes an LLM call, Synapse resolves which provider and model to use by checking the following sources in order, stopping at the first match.
+
+| Priority | Source | Where you configure it |
+|----------|--------|----------------------|
+| 1 — highest | Per-agent override | Agent Management → agent → LLM tab |
+| 2 | Tenant key you added | Organization → Provider Keys |
+| 3 | Platform sentinel config | Set by your Synapse operator |
+| 4 — lowest | Hardcoded fallback | `openai` + `gpt-4.1-mini` |
+
+As a workspace admin, you control priorities 1 and 2. Your platform operator controls everything below that. Once you add a key, all agents in your workspace use it unless a per-agent override (priority 1) says otherwise.
+
+## Add an API key
+
+<Steps>
+  <Step title="Open Provider Keys">
+    In the left sidebar, go to **Organization**, then select the **Provider Keys** tab (identified by a key icon).
+  </Step>
+  <Step title="Click Add Key">
+    Click **Add Key**. A dialog opens with fields for provider, name, and key value.
+  </Step>
+  <Step title="Select your provider">
+    Choose a provider from the dropdown. The dialog updates to show the expected key format for that provider.
+  </Step>
+  <Step title="Name the key">
+    Enter a descriptive label — for example, `Production OpenAI key` or `Dev Anthropic key`. You will see this name in the key list when you need to rotate or remove it.
+  </Step>
+  <Step title="Paste your API key">
+    Paste the key from your provider's dashboard. Synapse validates the key format before saving. If the format does not match, an inline error appears and the key is not saved.
+
+    <Warning>
+    Copy the key directly from your provider dashboard rather than from a document or message. Trailing spaces, line breaks, or altered prefixes are the most common cause of format validation failures.
+    </Warning>
+  </Step>
+  <Step title="Save">
+    Click **Add Key**. After saving, only the key prefix is shown in the list — for example, `sk-ant-api03-...`. The full key value is never returned to the UI and cannot be retrieved by workspace admins.
+  </Step>
+</Steps>
+
+## Set a per-agent model override
+
+You can direct a specific agent to use a different provider or model than your workspace default. The override takes effect immediately after saving — no restart needed.
+
+Use a per-agent override when:
+
+- An agent handles long documents and needs a model with a larger context window.
+- You want to test a new model on one agent before changing the workspace-wide default.
+- A specific agent needs a provider-specific capability (such as Anthropic extended thinking) that your workspace default does not expose.
+
+<Steps>
+  <Step title="Open the agent">
+    Go to **Agent Management** in the left sidebar and click the agent you want to configure.
+  </Step>
+  <Step title="Select the LLM tab">
+    Within the agent detail view, select the **LLM** tab.
+  </Step>
+  <Step title="Choose a provider and model">
+    Select a provider from the **Provider** dropdown, then enter the model ID in the **Model** field.
+
+    Model ID format depends on the provider:
+    - **Direct OpenAI:** bare name, e.g. `gpt-4.1` or `gpt-4.1-mini`
+    - **Direct Anthropic:** bare name, e.g. `claude-sonnet-4-6`
+    - **OpenRouter:** prefixed format, e.g. `openai/gpt-4o-mini` or `anthropic/claude-3-5-sonnet-20241022`
+  </Step>
+  <Step title="Save">
+    Click **Save Configuration**. A confirmation toast confirms the save. Other agents continue using the workspace default.
+  </Step>
+</Steps>
+
+To remove an override and return an agent to the workspace default, open the agent's LLM tab, clear the provider and model fields, and save.
+
+## Cost visibility
+
+Synapse does not currently provide a dedicated billing or budget UI. You can track usage from two places:
+
+**Audit log** — Go to **Organization** → **Audit** to view LLM call records including token counts and cost estimates. Use this to identify which agents or workflows are consuming the most.
+
+**Provider dashboards** — For accurate billing, check your account directly at the provider (for example, `platform.openai.com` or `console.anthropic.com`). The provider dashboard is the authoritative source for actual charges.
+
+A few practices that help keep costs in check:
+
+- **Match model to task.** Use smaller models like `gpt-4.1-mini` for high-volume routine work and reserve larger models for complex analysis.
+- **Override expensive agents.** If one high-volume agent is driving most of your spend, set a per-agent override to route it to a cost-effective model.
+- **Set spending limits at the provider.** Most providers, including OpenRouter and OpenAI, let you cap monthly spend in their own dashboards. This is the most reliable way to prevent overruns.
+
+## Rotate a key
+
+Rotate a key when your provider issues a replacement — for example, after a security incident or as part of a routine key rotation policy.
+
+<Steps>
+  <Step title="Find the key">
+    In **Organization** → **Provider Keys**, find the key you want to rotate and click **Rotate**.
+  </Step>
+  <Step title="Confirm you have the right key">
+    The dialog shows the key name and prefix so you can verify you are rotating the correct entry.
+  </Step>
+  <Step title="Enter the new key">
+    Paste the new API key from your provider dashboard into the **New API Key** field.
+  </Step>
+  <Step title="Confirm and rotate">
+    Check the confirmation checkbox and click **Rotate Key**. The old key is invalidated immediately.
+  </Step>
+</Steps>
+
+<Warning>
+The old key is invalidated as soon as rotation completes. If you are unsure whether anything depends on the current key, add the new key as a separate entry first, verify it is working, and then delete the old entry.
+</Warning>
+
+## Remove a key
+
+<Steps>
+  <Step title="Find the key">
+    In **Organization** → **Provider Keys**, find the key and click **Delete**.
+  </Step>
+  <Step title="Confirm deletion">
+    The dialog shows the key name, prefix, creation date, and who created it. Type `DELETE` (uppercase) in the confirmation field and click **Delete Key**.
+  </Step>
+</Steps>
+
+Deletion is permanent. Agents that were using this key through the workspace default fall back to the next priority level, which may be the platform operator's shared credentials. Before deleting, confirm you have either added a replacement key or are intentionally falling back to platform defaults.

@@ -1,0 +1,83 @@
+---
+title: 'Connect external tools and integrations to Synapse'
+description: 'Link Jira, GitHub, Slack, and other external services to Synapse so AI agents can read, create, and update work items across your existing tools.'
+---
+
+Synapse connects to the tools your team already uses so AI agents can work with real project data rather than operating in isolation. When you connect Jira, for example, an agent building an action plan can create Jira issues directly and sync status changes back to Synapse as work progresses. Connections are per-workspace and use OAuth so your credentials stay with your provider accounts — Synapse receives a token, not your password.
+
+## Available integrations
+
+<CardGroup cols={2}>
+  <Card title="Jira" icon="ticket">
+    Bidirectional sync between Synapse action plans and Jira issues. Agents can create, read, and update Jira tickets. Status changes in either system are reflected in the other.
+  </Card>
+  <Card title="GitHub" icon="github">
+    Webhook-driven PR analysis. When a pull request is opened or updated, Synapse agents can review the diff, flag issues, and leave comments without manual prompting.
+  </Card>
+  <Card title="Slack" icon="slack">
+    Send notifications and agent updates to Slack channels. Keeps your team informed about session progress without switching to Synapse.
+  </Card>
+  <Card title="OpenRouter" icon="key">
+    A unified LLM gateway that gives your agents access to models from OpenAI, Anthropic, Meta, Mistral, and others through a single API key. Configure it under Provider Keys — see [Configure LLM providers](/configuration/llm-providers).
+  </Card>
+</CardGroup>
+
+Additional integrations — Confluence, Microsoft Teams, and Azure DevOps — are available through the same connection flow.
+
+## Manage connections
+
+All integrations are managed from **Settings → Integrations**. The page shows every available integration and its current status: not connected, pending, active, or expired.
+
+To add or remove a connection:
+
+<Steps>
+  <Step title="Open Settings → Integrations">
+    In the left sidebar, go to **Settings**, then select **Integrations**.
+  </Step>
+  <Step title="Click Connect on the integration you want to add">
+    Each integration tile shows a **Connect** button if no active connection exists for your workspace.
+  </Step>
+  <Step title="Complete the OAuth flow">
+    Synapse opens the provider's authorization page in a new window or popup. Sign in to the provider and grant the requested permissions. After you approve, the provider redirects back to Synapse and the connection status updates to **Active**.
+  </Step>
+  <Step title="Confirm the connection is active">
+    The integration tile updates to show the connected account and a **Disconnect** button. Active connections are available to all agents in your workspace immediately.
+  </Step>
+</Steps>
+
+<Note>
+You need workspace admin permissions to add or remove integrations. Team members can use connected integrations through agents but cannot modify connections.
+</Note>
+
+## Jira integration
+
+Connecting Jira enables bidirectional sync between Synapse action plans and your Jira project. When an agent builds an action plan, it can create corresponding Jira issues automatically. As tasks are completed in Synapse, the linked Jira issues are updated to match.
+
+**What Synapse can do with Jira:**
+
+- Create issues from action plan tasks, preserving title, description, and priority.
+- Retrieve issue details so agents have current context when working on a task.
+- Update issue status and fields as work progresses.
+- Search issues using JQL so agents can find related work before creating duplicates.
+
+When you connect Jira, you are prompted to enter your Atlassian subdomain. For example, if your Jira URL is `acme.atlassian.net`, enter `acme`.
+
+<Note>
+Synapse creates Jira issues on behalf of the connected account. Issues created by agents appear in Jira attributed to the user who authorized the connection.
+</Note>
+
+## GitHub integration
+
+The GitHub integration lets Synapse agents respond to pull request events through a webhook. When a PR is opened or updated in a connected repository, Synapse receives the event and can trigger agent analysis automatically.
+
+**What Synapse can do with GitHub:**
+
+- Analyze pull request diffs and surface potential issues.
+- Leave review comments on specific lines.
+- List branches and repository metadata for context during planning.
+
+Setting up the GitHub integration connects your GitHub account. To enable PR analysis for a specific repository, configure the webhook in your repository settings to point to your Synapse workspace's webhook URL. You can find this URL in **Settings → Integrations → GitHub** after connecting.
+
+## Disconnect an integration
+
+To remove a connection, go to **Settings → Integrations**, find the active integration, and click **Disconnect**. The connection is removed immediately and agents lose access to that service. No data created through the integration (such as Jira issues) is deleted — disconnecting Synapse does not affect records already created in the external system.
