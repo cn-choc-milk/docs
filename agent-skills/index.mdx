@@ -1,0 +1,47 @@
+---
+title: "Agent Skills"
+description: "Agent Skills are governed, reusable capabilities that Salesforce-specialist leads and specialists can invoke during Blueprint execution — pre-approved, scoped units of specialist capability that deliver consistent, auditable results."
+audience: "Salesforce architects, delivery leads, platform administrators"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+<Note>
+  Agent Skills documentation is being prepared and will be added after launch.
+</Note>
+
+## What it is
+
+Agent Skills are governed, reusable capabilities for Salesforce-specialist leads and specialists. A Skill is a pre-defined, scoped unit of specialist capability — a structured way for specialists to perform a class of Salesforce delivery work consistently, with defined inputs, outputs, and governance constraints.
+
+Skills are configured by platform administrators or delivery leads. Specialists invoke them during Blueprint task execution. Because Skills are pre-approved and auditable, they reduce the surface area of unreviewed specialist action while maintaining the full governed-execution model.
+
+## When to use it
+
+Use Agent Skills to codify repeatable Salesforce delivery patterns into reusable, governed capabilities:
+
+- **Standard metadata operations** — Apex class generation following your org's naming conventions
+- **Quality checks** — Org-specific governor limit analysis at defined risk thresholds
+- **Compliance automation** — Recurring permission-set audit against an approved baseline
+- **Integration patterns** — Standard REST API integration scaffolding for approved external systems
+
+Skills are appropriate when you have a specialist task pattern that recurs across projects and you want consistent, policy-compliant execution without rewriting the Blueprint logic each time.
+
+## Salesforce delivery example
+
+A Salesforce delivery team defines an "Apex Bulkification Check" Skill. The Skill runs the Governor Limit Analyzer at 200-record bulk volume, flags any SOQL queries inside loops, and produces a structured finding report. Whenever GUARDIAN is assigned a governor limit review task in any Blueprint, it invokes this Skill to ensure consistent analysis depth and format across all projects.
+
+## Required access
+
+- **Synapse role:** Platform Administrator to create and publish Skills; Project Manager or higher to assign Skills to Blueprint tasks
+- **Salesforce connection:** Skills that include metadata analysis require an active org connection
+
+## Governance notes
+
+Skills are subject to approval before they can be assigned to Blueprint tasks. A Skill's configuration defines its input parameters, output format, and the specialist roles authorized to invoke it. Skill invocations are logged individually in the Run audit trail. Changes to a Skill's configuration require re-approval before the updated version is active.
+
+---
+
+Detailed Skill configuration, examples, and the Skill catalog are coming soon. See [Leads and specialists](/core-concepts/leads-and-specialists) for the general specialist model.
