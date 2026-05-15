@@ -1,85 +1,87 @@
 ---
-title: "Synapse AI agent team for Salesforce development"
-description: "Meet AXIOM, FORGE, SYNTH, and the Synapse agent team — specialized agents that plan, build, review, and govern your Salesforce work."
+title: "Synapse Salesforce-specialist leads and specialists"
+description: "Meet AXIOM, FORGE, SYNTH, and the Synapse delivery roster — Salesforce-specialist leads and specialists that plan, build, review, and govern your Salesforce work."
 ---
 
-Synapse ships with a team of specialized AI agents, each designed for a distinct phase of Salesforce development. Rather than relying on a single general-purpose assistant, you assign the right agent to each task and the platform handles the rest—provisioning a secure sandbox, running the work inside it, and pushing the results back to your Git branch when it's done.
+Synapse ships with a team of Salesforce-specialist leads and specialists, each designed for a distinct phase of Salesforce delivery. Rather than relying on a single general-purpose assistant, you assign the right specialist to each task and the platform handles the rest—provisioning a secure Execution Node, running the work inside it, and pushing the results back to your Git branch when it's done.
 
-## The agent roster
+## The specialist roster
 
 <CardGroup cols={2}>
   <Card title="AXIOM" icon="compass">
     **Solution architect.** AXIOM handles strategic planning, system design, and architecture review. Use it at the start of a project to map out your technical approach before writing any code.
   </Card>
   <Card title="FORGE" icon="hammer">
-    **Full-stack developer.** FORGE is the default code-generation agent. It writes Apex classes, triggers, and Lightning Web Components, and acts as the fallback for any task that requires sandbox execution.
+    **Full-stack developer.** FORGE is the default code-generation specialist. It writes Apex classes, triggers, and Lightning Web Components, and acts as the fallback for any task that requires sandbox execution.
   </Card>
   <Card title="SYNTH" icon="pen-nib">
-    **Content specialist.** SYNTH generates documentation, user stories, and other written deliverables. It is the recommended agent for objectives, epics, and content-heavy action plan steps.
+    **Content specialist.** SYNTH generates documentation, user stories, and other written deliverables. It is the recommended specialist for objectives, epics, and content-heavy Blueprint steps.
   </Card>
   <Card title="GUARDIAN" icon="shield-check">
     **Security reviewer.** GUARDIAN performs security analysis, validates CI/CD configurations, and flags governance violations before code reaches a production org.
   </Card>
   <Card title="SENTINEL" icon="circle-check">
-    **QA and validation.** SENTINEL runs quality gates, validates test coverage, and blocks deployments that fail your org's testing standards. Assign it to any test or review step in your action plan.
+    **QA and validation.** SENTINEL runs quality gates, validates test coverage, and blocks deployments that fail your org's testing standards. Assign it to any test or review step in your Blueprints.
   </Card>
 </CardGroup>
 
 <Info>
-  The full agent roster also includes LUMEN (business analysis), RELAY (integration specialist), VEKTOR (DevOps and deployment), CURATOR (code review), ATLAS (documentation), and KEYSTONE (Flow and declarative tooling). You can assign any of these from the Agent Hub or from within an action plan.
+  The full delivery roster also includes LUMEN (business analysis), RELAY (integration specialist), VEKTOR (DevOps and deployment), CURATOR (code review), ATLAS (documentation), and KEYSTONE (Flow and declarative tooling). You can assign any of these from the Agent Hub or from within a Blueprint.
 </Info>
 
-## How agents work: POD execution
+Agents execute work inside governed Runs. Human reviewers approve gated actions through Nexus before execution proceeds to the next phase.
 
-When an agent runs a task, Synapse launches a **POD** (Platform Operation Dispatch)—an isolated E2B sandbox with full file-system and CLI access, a cloned copy of your GitHub repository, and authenticated Salesforce tooling (SFDX). The agent completes its work inside that sandbox, then the platform pushes the results to a Git branch before releasing the environment. Nothing persists between separate POD sessions unless it has been committed to Git.
+## How specialists execute: isolated delivery Runs
+
+When a specialist runs a task, Synapse provisions an isolated Execution Node — a sandbox environment with full file-system and CLI access, a cloned copy of your GitHub repository, and authenticated Salesforce tooling (SFDX). The specialist completes its work inside that isolated Execution Node, then the platform pushes the results to a Git branch before releasing the environment. Nothing persists between separate Runs unless it has been committed to Git.
 
 ```
-Task assigned to agent
-  → Secure sandbox provisioned (E2B Firecracker VM)
+Task assigned to specialist
+  → Secure Execution Node provisioned (isolated sandbox VM)
   → GitHub repository cloned into sandbox
-  → Agent executes using SFDX + file tools
+  → Specialist executes using SFDX + file tools
   → Results committed and pushed to Git branch
-  → Sandbox released
+  → Execution Node released
 ```
 
 <Note>
-  Each task gets its own isolated sandbox by default. If your action plan assigns the same agent to multiple tasks, those tasks run in separate environments sequentially rather than sharing state.
+  Each task gets its own isolated Execution Node by default. If your Blueprint assigns the same specialist to multiple tasks, those tasks run in separate environments sequentially rather than sharing state.
 </Note>
 
 ## Using the Agent Hub
 
-The **Agent Hub** is where you browse available agents, review their capabilities, and launch them directly against a task.
+The **Agent Hub** is where you browse available specialists, review their capabilities, and launch them directly against a task.
 
 <Steps>
   <Step title="Open the Agent Hub">
     Click **Agent Hub** in the left navigation bar.
   </Step>
-  <Step title="Browse or search agents">
-    Use the search bar to find an agent by name, or browse by category: **Engineering**, **Operations**, or **Specialized**.
+  <Step title="Browse or search specialists">
+    Use the search bar to find a specialist by name, or browse by category: **Engineering**, **Operations**, or **Specialized**.
   </Step>
-  <Step title="Select an agent">
-    Click any agent card to open its detail panel. You will see its capabilities, supported execution modes (chat or generate), and recent activity.
+  <Step title="Select a specialist">
+    Click any specialist card to open its detail panel. You will see its capabilities, supported execution modes (chat or generate), and recent activity.
   </Step>
   <Step title="Assign to a task">
-    Click **Assign to Task** and choose the task you want the agent to work on. The agent will be queued for POD execution immediately.
+    Click **Assign to Task** and choose the task you want the specialist to work on. The specialist will be queued for execution immediately.
   </Step>
 </Steps>
 
-## Assigning agents to action plan steps
+## Assigning specialists to Blueprint steps
 
-Inside an action plan, each task node has an agent assignment slot. Synapse surfaces **match scores**—a ranked list of agents ordered by how well their capabilities fit the task description—so you can make an informed choice without guessing.
+Inside a Blueprint, each task node has a specialist assignment slot. Synapse surfaces **match scores**—a ranked list of specialists ordered by how well their capabilities fit the task description—so you can make an informed choice without guessing.
 
-To assign an agent to a task node:
+To assign a specialist to a task node:
 
 1. Click the task node on the canvas to open the properties panel.
-2. Under **Agent Assignment**, review the suggested agents and their match scores.
-3. Click an agent to assign it. The score and its reasoning appear below the agent name.
-4. Repeat for every task node in the plan.
+2. Under **Specialist Assignment**, review the suggested specialists and their match scores.
+3. Click a specialist to assign it. The score and its reasoning appear below the specialist name.
+4. Repeat for every task node in the Blueprint.
 
 <Tip>
-  When generating an action plan from a PRD, enable the **Recommended** preset to auto-assign agents by task type: SYNTH for objectives and epics, FORGE for stories and implementation tasks, SENTINEL for test steps, and RELAY for integration work. You can override any assignment individually after the plan is generated.
+  When generating a Blueprint from a PRD, enable the **Recommended** preset to auto-assign specialists by task type: SYNTH for objectives and epics, FORGE for stories and implementation tasks, SENTINEL for test steps, and RELAY for integration work. You can override any assignment individually after the Blueprint is generated.
 </Tip>
 
 <Warning>
-  Every task node must have an assigned agent before you can start execution. The plan validator will flag unassigned tasks and block the transition to Execution mode until all assignments are complete.
+  Every task node must have an assigned specialist before you can start execution. The Blueprint validator will flag unassigned tasks and block the transition to Execution mode until all assignments are complete.
 </Warning>
