@@ -1,0 +1,147 @@
+---
+title: "Viewing Run Logs and Artifacts"
+description: "Where Run logs live in Nexus, what artifacts a Run captures, and how to download them."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Every Run produces logs and artifacts throughout its execution. This page describes where to find them in the Synapse UI, what each artifact type contains, and how to download or reference them.
+
+## When to use it
+
+Use this page when you need to:
+
+- Review what a specialist did during a Run
+- Download source files or deployment results from a completed Run
+- Find the sandbox branch reference for a Run's code output
+- Review a validation report or test coverage output
+- Share a Run's artifact trail with a stakeholder or auditor
+
+## Salesforce delivery example
+
+A Run for a new Apex trigger completed. In Nexus, you open the Run and find: a diff of the two new Apex files committed to the sandbox branch, a SENTINEL PMD report showing zero violations, an Apex test execution result with 94% coverage, and the deployment validation receipt from the scratch org deploy.
+
+## Required access
+
+- Any Synapse user with project access can view Run logs and artifacts
+- Artifact download requires Delivery Lead role or higher
+
+---
+
+## Viewing logs in Nexus
+
+All Run logs are accessible from the Run detail view in Nexus.
+
+### Opening the Run detail view
+
+1. Navigate to **Nexus** in the left sidebar.
+2. Find the Run you want to inspect. Runs are listed in reverse chronological order with status badges. Use the filter controls to narrow by project, status, or specialist.
+3. Click the Run row to open the Run detail view.
+
+### Log panels in the Run detail view
+
+The Run detail view has three log panels:
+
+**Execution timeline**
+A chronological view of every event in the Run — task starts, gate evaluations, approvals, specialist completions, and the final outcome. Each entry includes a timestamp and the actor (specialist name or user identity).
+
+**Specialist output**
+One panel per specialist that participated in the Run. Each panel shows:
+- The task the specialist was assigned
+- The streaming output generated during execution (tool calls, code generation steps, analysis findings)
+- Final task result summary
+
+Specialist output is retained after the Run completes and is searchable.
+
+**Governance log**
+A filtered view of the execution timeline showing only governance-relevant events: gate evaluations, approval decisions, state transitions, and any override actions. This is the view to share with an auditor.
+
+---
+
+## Artifacts captured by a Run
+
+Runs capture the following artifact types:
+
+### Sandbox branch push
+
+When FORGE or another build specialist generates source files, those files are committed to a branch in your connected repository. The branch name follows the pattern `synapse/<run-id>` or `feature/<signal-id>` depending on your branch naming configuration.
+
+The artifact panel shows:
+- Branch name and repository
+- Commit SHA
+- Files changed (diff view available inline)
+- Commit message (auto-generated from the Blueprint task)
+
+### Deployment results
+
+When SENTINEL's deployment gate runs, it records the full Salesforce Metadata API deployment result, including:
+- Component-level success or failure status
+- Any deployment errors with component name and error message
+- Deploy ID (useful for correlating with Salesforce Setup > Deployment Status)
+
+If the deployment step produced a `deploy_failed` outcome, the deployment error is highlighted at the top of the artifact panel.
+
+### Validation reports
+
+SENTINEL generates structured validation reports for each gate it runs:
+
+| Report type | Contents |
+|-------------|----------|
+| PMD scan | Rule violations with severity, file name, line number, and rule description |
+| ESLint scan | LWC/JavaScript lint findings with rule and line reference |
+| Apex test execution | Test class results, pass/fail counts, individual test method outcomes |
+| Code coverage | Per-class coverage percentage, uncovered line numbers |
+| Governor limit analysis | Estimated governor limit usage against SOQL, DML, CPU, and Queueable limits |
+
+Validation reports are available even if the gate triggered an `awaiting-approval` pause — you can review the report before deciding whether to approve continuation.
+
+### Execution receipt
+
+A summary artifact generated at Run completion (or on terminal failure). Contains:
+- Run ID and Blueprint ID
+- Start and end timestamp
+- Total elapsed time
+- Task count, success count, failure count
+- Final Run state
+- Specialist roster with per-specialist task counts
+
+The execution receipt is the single artifact to attach when filing a deployment record or sharing a delivery summary.
+
+---
+
+## Downloading artifacts
+
+Artifacts can be downloaded individually or as a bundle.
+
+**Individual download:**
+In the artifact panel, click the download icon next to any artifact. Files are downloaded in their native format (`.xml` for metadata, `.json` for reports, `.txt` for logs).
+
+**Bundle download:**
+At the top of the artifact panel, click **Download all artifacts** to receive a `.zip` archive of the full artifact set for the Run. The archive includes:
+- All source files from the sandbox branch push
+- All validation reports as `.json` files
+- The execution receipt as a `.json` file
+- The governance log as a `.csv` file
+
+<Note>
+  Artifact bundle download for Runs older than 90 days is being prepared and will be added after launch.
+</Note>
+
+---
+
+## Finding the sandbox branch
+
+The sandbox branch reference is available in the artifact panel under **Source output**. The branch name and repository URL are shown. Click the branch name to open the branch in your connected GitHub or source control provider.
+
+If the Run did not produce a sandbox branch (for example, a governance-scan-only Blueprint with no code generation), the source output section will show "No source output for this Run."
+
+## Governance notes
+
+Artifacts are write-once from the application surface. Synapse application code does not provide endpoints to modify artifact content after a Run creates it. Direct database mutation requires platform-administrator-level access.
+
+Artifacts are retained according to your tenant's retention policy. By default, all Run artifacts are retained indefinitely. Admins can configure a retention window, but shortening retention does not retroactively delete existing artifacts — it applies to new Runs going forward.

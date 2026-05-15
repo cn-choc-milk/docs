@@ -1,0 +1,146 @@
+---
+title: "Autopilot — Jira Integration"
+description: "How Autopilot reads Jira issues, what it classifies, what triggers a Blueprint, and what a no-op looks like."
+audience: "architect"
+flagship_path: "jira-to-run"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This page describes the mechanics of how Jira Autopilot reads Jira issues, applies the classification model to determine delivery type, and decides whether to generate a Blueprint or log a no-op. For the product overview, see [Jira Autopilot](/autopilot/index). For routing rule configuration, see [Routing Rules](/autopilot/routing-rules).
+
+## When to use it
+
+Read this page when you need to understand why a specific Jira issue did or did not generate a Blueprint, what fields Autopilot reads, how to improve classification accuracy, and what the classification model uses as its decision inputs.
+
+## Salesforce delivery example
+
+A Jira story with summary "Apex trigger: prevent duplicate Account records on insert" and description mentioning `AccountTrigger`, `TriggerHandler`, and `Test_AccountTrigger` is classified as an **Apex development** Blueprint. Autopilot detects Apex-specific terms, assigns FORGE to write the trigger and handler, assigns SENTINEL to run PMD, syntax check, and Apex test execution, and presents the Blueprint for architect approval before any code is generated.
+
+## Required access
+
+- Synapse workspace with Jira integration configured
+- Jira project added to the Autopilot monitored project list
+- Webhook from Jira to Synapse active (configured during Jira integration setup)
+
+---
+
+## How Autopilot reads Jira issues
+
+Jira Autopilot receives issue events via a Jira webhook. The webhook fires on:
+
+- Issue created
+- Issue status changed (to any monitored status column — configurable per project)
+- Issue updated with a label that includes a trigger label (configurable)
+
+When the webhook fires, Autopilot receives the full issue payload including summary, description, issue type, labels, components, and the project key. It does not poll Jira on a schedule; all classification is event-driven.
+
+**Fields Autopilot reads:**
+
+| Field | How it is used |
+|-------|----------------|
+| `summary` | Primary text for classification pattern matching |
+| `description` | Secondary text; increases classification confidence for longer issues |
+| `issuetype` | Mapped to Blueprint type hints (Story → feature delivery; Bug → targeted fix) |
+| `labels` | Trigger labels and skip labels are evaluated here |
+| `components` | If mapped to Salesforce delivery categories in routing rules, influences Blueprint type |
+| `project.key` | Used to resolve the Synapse project and tenant for the Blueprint |
+
+---
+
+## What the classification model does
+
+Classification is a two-step process: pattern matching followed by component detection.
+
+**Step 1 — Category pattern matching**
+
+Autopilot evaluates the issue summary and description against a set of delivery category patterns. Each pattern maps to a Blueprint template. Patterns are evaluated in priority order; the first match wins.
+
+Categories and their patterns (abbreviated — see [Routing Rules](/autopilot/routing-rules) for the full configurable set):
+
+| Category | Pattern signals | Default Blueprint template |
+|----------|----------------|---------------------------|
+| Apex development | `apex`, `trigger`, `batch`, `scheduled apex`, `invocable` | Apex build: analysis + code gen + PMD + test run |
+| LWC / Aura | `lwc`, `lightning component`, `aura`, `web component` | Frontend build: component gen + ESLint + deployment |
+| Metadata change | `field`, `object`, `layout`, `permission set`, `profile`, `flow` | Metadata build: analysis + deploy + validation |
+| Deployment / release | `deploy`, `release`, `promote`, `package` | Deployment Blueprint: org-specific gates |
+| Governance scan | `code review`, `pmd`, `governor`, `security`, `audit` | Sentinel-led scan Blueprint |
+
+**Step 2 — Salesforce component detection**
+
+After category matching, Autopilot scans the issue text for specific Salesforce API names, component types, and metadata prefixes (e.g., `__c` custom field suffix, `__mdt` custom metadata type, `CustomObject`, `ApexClass`). Detected components are attached to the Blueprint so that specialist assignments can be made with appropriate scope.
+
+---
+
+## What triggers a Blueprint vs. a no-op
+
+**A Blueprint is generated when:**
+- The issue matches a delivery category pattern with sufficient confidence
+- The project key resolves to a configured Synapse project
+- The issue status matches a monitored status column (or a trigger label is present)
+- The issue is not excluded by a skip label or a skip rule in routing configuration
+
+**A no-op is logged when:**
+- The issue does not match any delivery category pattern
+- The project key cannot be resolved to a Synapse project
+- The issue carries a skip label (configurable — default: `synapse-skip`, `no-autopilot`)
+- A routing rule explicitly blocks the issue type or component match
+- The issue is a sub-task of an issue that already generated a Blueprint (duplicate prevention)
+
+No-ops are surfaced in **Jira Autopilot > Unclassified** with the reason for the no-op. They are never silently discarded. The originating Jira issue does not receive a comment for a no-op unless you configure comment-on-skip in routing rules.
+
+---
+
+## Blueprint generation from a classified issue
+
+When classification succeeds, Autopilot:
+
+1. Resolves the Synapse project and tenant from the Jira project key
+2. Retrieves the relevant Blueprint template for the detected category
+3. Calls the AXIOM architecture lead to generate the task breakdown using the issue context and detected Salesforce components as input
+4. Runs preflight SENTINEL structural validation on the generated tasks (9-check structural pass — not the full 7-gate deployment pipeline, which runs during the Run)
+5. Presents the draft Blueprint in the **Jira Autopilot > Pending Blueprints** list for human review
+
+The Blueprint is in `draft` state until a Blueprint Approver reviews and approves it. Task generation uses the AXIOM lead to produce a metadata-aware breakdown, not a generic template. An issue about a custom object with related triggers and test classes will produce a more specific Blueprint than a generic feature story.
+
+---
+
+## Specialist assignments in generated Blueprints
+
+Autopilot proposes a specialist roster based on the detected category. Users can change assignments before approving.
+
+| Delivery category | Default specialists proposed |
+|------------------|-----------------------------|
+| Apex development | AXIOM (analysis), FORGE (code), SENTINEL (PMD + test) |
+| LWC / Aura | FORGE (component), SENTINEL (ESLint + deploy) |
+| Metadata change | AXIOM (analysis), FORGE (metadata), SENTINEL (deploy validation) |
+| Deployment | SENTINEL (validation), RELAY (notifications) |
+| Governance scan | SENTINEL (full scan) |
+
+Available specialist leads and their delivery responsibilities are described in the specialist roster section of the platform overview.
+
+---
+
+## Jira comment-back behavior
+
+When a Run triggered from a Jira-classified Blueprint completes, Autopilot posts a comment to the originating Jira issue. The comment includes:
+
+- Run outcome: `completed`, `deploy_failed`, or `failed`
+- Link to the Run in Nexus for full audit detail
+- Summary of artifacts produced (e.g., "3 files committed to sandbox branch `feature/SYN-42`")
+
+Comment-back requires that the Jira integration service account has permission to add comments on the project. If comment-back is disabled or the service account lacks permission, the failure is logged in Synapse but does not affect the Run itself.
+
+## Governance notes
+
+Autopilot does not make autonomous decisions. It proposes a Blueprint. The governance chain:
+
+1. Classification event is logged with the full Jira payload, timestamp, detected category, and confidence indicators
+2. Draft Blueprint includes preflight SENTINEL results before it reaches the approver
+3. Blueprint approval is a named, timestamped action by an identified Blueprint Approver
+4. No execution begins until the Blueprint is in `approved` state
+
+If the SENTINEL preflight detects structural blockers in the generated Blueprint (e.g., circular task dependencies, destructive operation patterns in a metadata change), those blockers are surfaced in the approval panel. The approver sees them before clicking Approve and can edit or reject the Blueprint.

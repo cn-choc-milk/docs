@@ -1,0 +1,225 @@
+---
+title: "Run Lifecycle"
+description: "Run states, state transitions, who can move each transition, and the governance gates between states."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This page documents the full Run state machine: every state a Run can be in, the transitions between states, who or what triggers each transition, and the governance gates that gate specific transitions. For a conceptual overview of what a Run is, see [Runs](/runs/index).
+
+## When to use it
+
+Read this page when you need to understand why a Run is in a particular state, who needs to take action to move it forward, or what the governance rules are for a specific transition.
+
+## Salesforce delivery example
+
+A Blueprint for an Apex trigger is approved. The Run starts in `queued`, moves to `in-progress` as FORGE begins code generation, enters `awaiting-approval` when SENTINEL's PMD gate finds a moderate violation, and returns to `in-progress` after the architect approves the remediated version. It completes with state `completed` and all artifacts stored.
+
+## Required access
+
+- Any Synapse user with project access can view Run state
+- Blueprint Approver role is required to approve `awaiting-approval` transitions
+- Admin role is required to cancel a Run that is `in-progress`
+
+---
+
+## Run states
+
+| State | Meaning | Who can be in this state |
+|-------|---------|--------------------------|
+| `queued` | Run has been created and is waiting for an Execution Node to become available | All Runs immediately after Blueprint approval |
+| `in-progress` | Tasks are actively executing; at least one specialist is working | Any Run after execution begins |
+| `awaiting-approval` | A governance gate paused execution; a human must review and decide | Runs with a triggered approval gate |
+| `paused` | A user or admin manually paused the Run | Runs that are `in-progress` and manually paused |
+| `blocked` | A task dependency cannot be resolved (a predecessor failed or is stuck) | Runs where a task is in `failed` state and successors are blocked |
+| `completed` | All tasks completed successfully; all SENTINEL gates passed | Terminal state — no further transitions |
+| `deploy_failed` | Specialist work succeeded but the Salesforce deployment step failed | Terminal state — specialist artifacts are preserved; deployment error is surfaced |
+| `failed` | The Run encountered an unrecoverable error before all tasks completed | Terminal state |
+| `cancelled` | The Run was cancelled by an Admin before completion | Terminal state |
+
+---
+
+## State transitions
+
+```
+[Blueprint approved]
+       |
+       v
+   [ queued ]
+       |
+       v (Execution Node allocated)
+  [ in-progress ] <--------------.
+       |                          |
+       |-- governance gate -----> [ awaiting-approval ]
+       |                              |
+       |                              |-- approved by Approver --> [ in-progress ]
+       |                              |
+       |                              '-- rejected by Approver --> [ cancelled ]
+       |
+       |-- manual pause ----------> [ paused ]
+       |                              |
+       |                              '-- resumed by Admin/Approver --> [ in-progress ]
+       |
+       |-- dependency failure -----> [ blocked ]
+       |                              |
+       |                              '-- remediated and restarted --> [ in-progress ]
+       |
+       |-- all tasks complete -----> [ completed ]
+       |
+       |-- SF deploy step fails ---> [ deploy_failed ]
+       |
+       |-- unrecoverable error ----> [ failed ]
+       |
+       '-- admin cancel -----------> [ cancelled ]
+```
+
+---
+
+## Transition details
+
+### queued → in-progress
+
+**Trigger:** An Execution Node becomes available and the dispatcher allocates it to this Run.
+
+**Who can trigger:** System (automatic). Users cannot manually skip `queued`.
+
+**Governance note:** The Run does not execute with credentials beyond those explicitly scoped in the Blueprint. If required credentials are missing, the Run stays in `queued` until the issue is resolved or times out.
+
+---
+
+### in-progress → awaiting-approval
+
+**Trigger:** A SENTINEL gate evaluates a task result and finds a finding that requires human review before execution can continue. The gate type determines what is surfaced (syntax error, PMD violation, governor limit hit, coverage below threshold).
+
+**Who can trigger:** System (SENTINEL gate evaluation). This is not manually triggerable.
+
+**Governance note:** The Run halts at the gate. No further tasks execute. The Approver receives a notification with the gate finding, the affected task, and the remediation options. All work completed before the gate is preserved.
+
+---
+
+### awaiting-approval → in-progress
+
+**Trigger:** A Blueprint Approver reviews the gate finding in Nexus and clicks **Approve** to allow execution to continue (with or without remediation applied).
+
+**Who can trigger:** Blueprint Approver role.
+
+**Governance note:** Approval at a gate is a named, timestamped action recorded in the Run's governance log. The Approver identity and the decision are part of the permanent Run record.
+
+---
+
+### awaiting-approval → cancelled
+
+**Trigger:** A Blueprint Approver reviews the gate finding and clicks **Reject** — deciding the Run should not continue.
+
+**Who can trigger:** Blueprint Approver role.
+
+**Governance note:** The rejection reason is captured in the governance log. The originating Jira issue (if applicable) receives a comment noting the Run was stopped at a governance gate.
+
+---
+
+### in-progress → paused
+
+**Trigger:** An Admin or Blueprint Approver manually pauses the Run.
+
+**Who can trigger:** Admin or Blueprint Approver role.
+
+**Governance note:** The pause action is logged with actor identity and timestamp. Tasks that are already in-flight by specialists when pause is triggered complete their current step before pausing.
+
+---
+
+### paused → in-progress
+
+**Trigger:** An Admin or Blueprint Approver resumes the Run.
+
+**Who can trigger:** Admin or Blueprint Approver role.
+
+**Governance note:** Resume is logged with actor identity.
+
+---
+
+### in-progress → blocked
+
+**Trigger:** A task that other tasks depend on enters `failed` state. Successor tasks cannot start because their prerequisite is unmet.
+
+**Who can trigger:** System (automatic on task failure with dependents).
+
+**Governance note:** The blocked state surfaces in Nexus with a dependency map showing which failed task is causing the block. An Admin can resolve by either restarting the failed task or cancelling the Run.
+
+---
+
+### in-progress → completed
+
+**Trigger:** All tasks in the Blueprint reach a terminal success state (`completed` or `deploy_failed` — see note below) and all mandatory SENTINEL gates passed.
+
+**Who can trigger:** System (automatic).
+
+**Note on `deploy_failed` tasks:** A task in `deploy_failed` counts toward Run completion because the specialist's work succeeded. The deployment error is surfaced as an artifact-level finding, not a Run-blocking failure. The Run moves to `completed` if all other tasks passed and no mandatory gate is blocking. If the deployment failure is itself a gate-blocking condition, the Run moves to `deploy_failed` at the Run level instead.
+
+---
+
+### in-progress → deploy_failed (Run level)
+
+**Trigger:** The Salesforce deployment step of a validated task succeeds in generating deployable metadata but the deployment to the target org fails (e.g., a dependent component is missing in the target org, org lock contention, metadata API error). The specialist's code artifacts are preserved in the sandbox branch.
+
+**Who can trigger:** System (automatic — SENTINEL deployment gate failure).
+
+**Governance note:** `deploy_failed` is a terminal state, not a failure of specialist work. The sandbox branch commit is preserved. An Admin or Architect can inspect the deployment error, correct the target org state, and re-trigger deployment manually if appropriate.
+
+---
+
+### in-progress → failed
+
+**Trigger:** An unrecoverable error occurs — Execution Node crash, sandbox provisioning timeout, or a specialist returns an error that no retry or remediation can address.
+
+**Who can trigger:** System (automatic).
+
+**Governance note:** The failure reason, error code, and the last specialist action are captured in the Run record. See [Run Troubleshooting](/runs/troubleshooting) for diagnostics by failure type.
+
+---
+
+### any non-terminal → cancelled
+
+**Trigger:** An Admin explicitly cancels the Run.
+
+**Who can trigger:** Admin role only.
+
+**Governance note:** Cancellation is logged with actor identity, timestamp, and current Run state at the time of cancellation. Any specialist work completed before cancellation is preserved in the artifacts panel. The sandbox branch is not automatically deleted on cancellation.
+
+---
+
+## Task-level states
+
+Individual tasks within a Run have their own state, tracked independently of the Run state:
+
+| Task state | Meaning |
+|------------|---------|
+| `pending` | Not yet started |
+| `queued` | Waiting for specialist availability |
+| `in_progress` | Specialist is actively working |
+| `awaiting_approval` | Task-level gate triggered (subset of gates can pause at task level) |
+| `completed` | Task succeeded |
+| `deploy_failed` | Specialist work succeeded; Salesforce deployment for this task failed |
+| `failed` | Task encountered an unrecoverable error |
+| `cancelled` | Task was cancelled (either directly or because the Run was cancelled) |
+| `skipped` | Task was intentionally skipped based on a conditional gate result |
+
+A Run's overall state is derived from the aggregate of its task states. The Run enters `awaiting-approval` when any task triggers a gate requiring approval.
+
+## Governance notes
+
+State transitions are immutable log entries. Every transition — system-triggered or human-triggered — appends to the Run's governance log with:
+
+- Previous state
+- New state
+- Actor (user ID for human actions; system identifier for automatic transitions)
+- Timestamp (UTC)
+- Any gate finding or reason text
+
+The governance log cannot be edited or deleted. It is the audit trail for the Run.
+
+**Production-tier behavior:** At Strict tier (runtime profile: `production`), the `in-progress → awaiting-approval` transition fires before every task dispatch, not only on Sentinel findings. Per-task approval is enforced by setting `requireApproval = true` in the governance tier configuration. Standard tier enforces blocking Sentinel gates but does not fire a per-task approval transition.

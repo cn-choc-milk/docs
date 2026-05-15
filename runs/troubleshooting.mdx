@@ -1,0 +1,162 @@
+---
+title: "Run Troubleshooting"
+description: "Common Run failures — sandbox provisioning, governor limits, governance gate rejection, and deploy_failed — with diagnostics and next steps."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This page maps common Run failure symptoms to their diagnostic steps and resolution paths. Each section describes the symptom, what to check first, and what to do next. For a reference of all Run states including failure states, see [Run Lifecycle](/runs/lifecycle).
+
+## When to use it
+
+Use this page when a Run is in `failed`, `deploy_failed`, `blocked`, or `awaiting-approval` state and you need to understand what happened and what action to take.
+
+## Salesforce delivery example
+
+A Run for a new custom object with a trigger finishes with `deploy_failed`. The specialist's Apex code compiled successfully in the validation scratch org, but the deployment to your development sandbox failed because a dependent custom object (`Contract_Extension__c`) does not exist in that environment. The fix is to deploy the missing dependency first, then re-trigger the deployment — not to re-run the entire Blueprint.
+
+## Required access
+
+- Blueprint Approver to review and act on `awaiting-approval` states
+- Admin to cancel or manually restart a Run
+- Delivery Lead or higher to access full specialist output logs
+
+---
+
+## Failure 1 — Sandbox provisioning timeout
+
+**Symptom:** Run stays in `queued` for more than 5 minutes, then transitions to `failed`. The governance log shows `Execution Node provisioning timeout`.
+
+**What happened:** The Run could not allocate an isolated Execution Node within the expected window. This can occur during high concurrency periods, if the sandbox environment is degraded, or if a prior Run's cleanup is still in progress.
+
+**What to check first:**
+
+1. Navigate to **Nexus > Active Runs**. Check whether multiple other Runs are queued simultaneously. If yes, you may be hitting a concurrency limit — Runs queue behind each other.
+2. Open the failed Run's governance log and look for the specific error code logged at the provisioning timeout event.
+3. Check your tenant's sandbox tier. Lower tiers have a lower maximum concurrent Run count.
+
+**Next steps:**
+
+- If concurrency is the cause, wait for active Runs to complete, then re-trigger the Blueprint (click **Re-run Blueprint** on the failed Run).
+- If the error code references sandbox infrastructure degradation, contact support with the Run ID.
+- Sandbox provisioning timeout does not consume Blueprint approval — re-running uses the same approved Blueprint without requiring a new approval.
+
+---
+
+## Failure 2 — Governor limit hit during SENTINEL gate
+
+**Symptom:** Run enters `awaiting-approval`. The approval panel shows a SENTINEL finding of type `governor-limit` with a specific limit type (SOQL, DML, CPU, or Queueable).
+
+**What happened:** SENTINEL's governor limit analysis gate estimated that the specialist's generated code would exceed a Salesforce governor limit at the projected scale. The Run paused at the gate rather than proceeding to deployment.
+
+**What to check first:**
+
+1. Open the `awaiting-approval` Run in Nexus.
+2. In the SENTINEL gate panel, read the finding: which limit, what the estimated usage is, and which Apex class or operation is the primary contributor.
+3. Review the specialist output for the FORGE task that generated the code. The specialist's reasoning about the code structure is visible in the specialist output panel.
+
+**Next steps:**
+
+Option A — Approve with remediation: Click **View FORGE output**, then open a corrective task by clicking **Add remediation task** in the Blueprint editor. The new task asks FORGE to refactor the problematic code path. Once added and FORGE completes the remediation, SENTINEL re-evaluates and you can approve continuation.
+
+Option B — Approve without remediation: If you have reviewed the finding and determined the governor limit estimate is based on a scale assumption that does not apply to your org (for example, the analysis assumed bulk record volumes that your use case never reaches), you can approve with an override note. The override decision and your note are recorded in the governance log.
+
+Option C — Reject: Click **Reject** to stop the Run. The finding is preserved in the Run record. You can create a new Blueprint that addresses the governor concern from the start.
+
+---
+
+## Failure 3 — Governance gate rejection (manual)
+
+**Symptom:** Run is in `cancelled` state. The governance log shows a human rejection at an `awaiting-approval` gate.
+
+**What happened:** A Blueprint Approver reviewed a SENTINEL gate finding and decided to reject rather than approve continuation.
+
+**What to check first:**
+
+1. Open the cancelled Run's governance log. Find the rejection event. It will show the approver identity, timestamp, and the rejection reason text they entered.
+2. Review the gate finding that triggered the approval request. The finding is preserved even in the cancelled Run.
+
+**Next steps:**
+
+- Understand the rejection reason. If the issue is correctable (for example, a code pattern that can be refactored), create a new Blueprint that addresses it before triggering a new Run.
+- If the rejection was made in error (for example, the approver misread the finding), an Admin can review the Run history and create a new Blueprint from the same Jira issue with the correction applied.
+- There is no "un-cancel" for a cancelled Run. Each attempt is a new Run record with a new governance trail.
+
+---
+
+## Failure 4 — deploy_failed — specialist work succeeded but Salesforce deployment failed
+
+**Symptom:** Run is in `deploy_failed` state (or an individual task is in `deploy_failed` while the Run is in `completed`). The artifact panel shows a deployment error.
+
+**What happened:** The specialist's code was generated, committed to the sandbox branch, and passed SENTINEL's validation gates — but the Metadata API deployment step to the target Salesforce org failed. Common causes:
+
+- **Missing dependency:** A component in the Blueprint depends on another component (`CustomObject`, `RecordType`, `Field`) that does not exist in the target org. The deployment API returns a `MISSING_TYPE` or `NO_SUCH_COLUMN` error.
+- **Org lock contention:** Another deployment was in progress in the target org at the same time. The Metadata API returned a lock timeout error.
+- **Package version conflict:** A managed package component in the Blueprint conflicts with an installed package version in the target org.
+- **API version mismatch:** The metadata API version used in the deployment does not match the org's supported range.
+
+**What to check first:**
+
+1. Open the Run in Nexus and navigate to **Artifacts > Deployment results**.
+2. Read the component-level error messages in the deployment result. Each failed component has an error message and type.
+3. Cross-reference the error with the list of common causes above.
+
+**Next steps:**
+
+| Error message pattern | Likely cause | Resolution |
+|----------------------|-------------|-----------|
+| `MISSING_TYPE`, `NO_SUCH_COLUMN`, `Unknown relationship` | Missing dependency in target org | Deploy the dependency first; see the specialist output for the dependent component name |
+| `Destination organization is currently in maintenance` or lock error | Org lock contention | Wait and retry deployment manually — the artifact is on the sandbox branch |
+| `Dependent class is invalid` | Class compilation dependency not in target org | Check for a related component that needs to be deployed together |
+| `PACKAGE_VERSION_NUMBER_INVALID` | Managed package conflict | Review managed package versions in target org Setup |
+
+For missing dependencies: the sandbox branch commit is preserved. An Admin or Delivery Lead can trigger a targeted deployment of just the missing dependency, then re-deploy the Run's artifacts manually using the Salesforce CLI or the Synapse deployment panel.
+
+<Note>
+  One-click re-deployment from the Run artifact panel after resolving a deploy_failed condition is being prepared and will be added after launch.
+</Note>
+
+---
+
+## Failure 5 — blocked state (dependency failure)
+
+**Symptom:** Run is in `blocked` state. Some tasks are in `failed` or `completed` state; others are stuck in `pending`.
+
+**What happened:** A task that other tasks depend on entered `failed` state. Its successor tasks cannot start because their prerequisite is unmet.
+
+**What to check first:**
+
+1. Open the Run's task list in Nexus.
+2. Identify which task is in `failed` state. Check its specialist output and error message.
+3. Identify which tasks list the failed task as a dependency — these will show as `pending` with a dependency note.
+
+**Next steps:**
+
+- If the failed task is recoverable (for example, the specialist hit a transient error): an Admin can manually restart the failed task from the task detail panel.
+- If the failed task is not recoverable: the Run cannot complete in its current form. Cancel the Run, address the underlying issue (code error, missing credential, missing dependency), and create a new Blueprint or re-run the approved Blueprint from the start.
+
+---
+
+## Failure 6 — Run stays in-progress with no visible activity
+
+**Symptom:** Run has been in `in-progress` state for significantly longer than expected. Task cards show specialists in `in_progress` but no new specialist output is appearing.
+
+**What to check first:**
+
+1. Open the Run in Nexus and check the **Execution timeline** for the last event timestamp.
+2. Check whether the task has been in `in_progress` for longer than the estimated duration shown on the task card.
+3. Look for a `streaming` state on any task — if a task is in `streaming` state it is actively receiving specialist output. If it is in `in_progress` with no recent timeline events, the specialist may be waiting on an external system response (for example, a Salesforce API call that is taking longer than usual).
+
+**Next steps:**
+
+- If a task appears genuinely stuck (no activity for more than 15 minutes): an Admin can pause and resume the Run, which triggers a health check. If the specialist does not recover, cancel the Run and contact support with the Run ID and the task ID.
+- If the issue is a slow Salesforce API response: wait; the Run will eventually time out the operation and either retry or fail the task.
+
+## Governance notes
+
+All diagnostic actions — gate approvals, override decisions, task restarts, and Run cancellations — are logged in the Run's governance log with the actor identity and timestamp. If you take a diagnostic action and it turns out to be incorrect, the record of what was done and by whom is preserved. There is no "undo" for governance decisions; the correct path is a new Run with the issue addressed.
