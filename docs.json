@@ -22,8 +22,98 @@
             "group": "Get Started",
             "pages": [
               "index",
+              "getting-started/jira-to-run",
+              "getting-started/project-to-pod",
               "quickstart",
               "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core-concepts/synapse-delivery-lifecycle",
+              "core-concepts/blueprints",
+              "core-concepts/leads-and-specialists",
+              "core-concepts/signals"
+            ]
+          },
+          {
+            "group": "Jira Autopilot",
+            "pages": [
+              "autopilot/index",
+              "autopilot/jira",
+              "autopilot/routing-rules"
+            ]
+          },
+          {
+            "group": "PODs",
+            "pages": [
+              "pods/index",
+              "pods/create-and-configure",
+              "pods/assign-work",
+              "pods/mission-control"
+            ]
+          },
+          {
+            "group": "Runs",
+            "pages": [
+              "runs/index",
+              "runs/lifecycle",
+              "runs/viewing-logs-and-artifacts",
+              "runs/troubleshooting"
+            ]
+          },
+          {
+            "group": "Sandboxes",
+            "pages": [
+              "sandboxes/index",
+              "sandboxes/configure",
+              "sandboxes/isolation-and-logs"
+            ]
+          },
+          {
+            "group": "Secrets",
+            "pages": [
+              "secrets/index",
+              "secrets/manage",
+              "secrets/scopes"
+            ]
+          },
+          {
+            "group": "Security & Governance",
+            "pages": [
+              "security-governance/index",
+              "security-governance/approval-gates",
+              "security-governance/auditability"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/index",
+              "integrations/jira",
+              "integrations/salesforce",
+              "integrations/github",
+              "integrations/slack",
+              "integrations/azure-devops"
+            ]
+          },
+          {
+            "group": "Scheduled Workflows",
+            "pages": [
+              "scheduled-workflows/index"
+            ]
+          },
+          {
+            "group": "Agent Skills",
+            "pages": [
+              "agent-skills/index"
+            ]
+          },
+          {
+            "group": "Workflow Module",
+            "pages": [
+              "workflow-module/index"
             ]
           },
           {
