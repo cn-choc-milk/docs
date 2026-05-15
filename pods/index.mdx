@@ -1,0 +1,107 @@
+---
+title: "PODs"
+description: "A POD is a project-linked Salesforce delivery team — a configured roster of leads and specialists that executes governed Runs under a single project."
+audience: "architect"
+flagship_path: "project-to-pod"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+A POD is a project-linked Salesforce delivery team. Each POD is scoped to a single project, configured with a roster of leads and specialists, and executes Salesforce delivery work as a series of Runs. Every Run produced by a POD is observable, auditable, and governed by the POD's configured governance tier.
+
+PODs are how Synapse connects project intent to governed delivery execution — from the task board to an approved Blueprint to a completed Run with artifacts.
+
+## When to use it
+
+Use a POD when:
+
+- You have a Salesforce project that requires structured, multi-task delivery work assigned to specialist leads
+- You want a stable, project-scoped delivery team rather than per-issue dispatch
+- You need consistent governance settings (tier, connected org, specialist roster) applied across all delivery work for a project
+
+## Salesforce delivery example
+
+Your team is delivering the **Service Cloud — Case Management Upgrade** project. You configure a POD for that project with AXIOM as the architecture lead, FORGE as the build specialist, and SENTINEL handling validation. Every Blueprint authored under that project is dispatched to the same team, in the same isolated environment, under the same governance tier — giving you a predictable, repeatable delivery process across the entire project.
+
+## Required access
+
+- Synapse workspace with Admin or Delivery Lead role
+- At least one project created in Synapse
+- At least one Salesforce sandbox or scratch org connected to your workspace
+
+---
+
+## How PODs work
+
+### One POD per project
+
+Each project supports one active POD. The POD defines the delivery context for the project: which specialists handle which types of work, which Salesforce org they target, and how strictly governance is enforced.
+
+You create the POD once and it persists across all Runs for that project. Updating the POD configuration affects future Runs, not Runs already in progress.
+
+### Specialist roster
+
+When you configure a POD, you select the leads and specialists from the Synapse delivery roster who will handle work for your project. Each specialist handles a distinct class of Salesforce delivery work:
+
+- **AXIOM** — Architecture and solution design. Reviews data models, integration patterns, and technical specifications.
+- **LUMEN** — Business analysis and requirements. Translates business context into delivery tasks and acceptance criteria.
+- **SYNTH** — Data and configuration delivery. Handles metadata configuration, data structures, and platform setup.
+- **VEKTOR** — Delivery coordination and status. Orchestrates multi-specialist Runs and surfaces delivery status.
+
+Additional specialist roles (FORGE, SENTINEL, GUARDIAN, RELAY, and others) handle build, validation, security, and communications tasks within a Run. The POD configuration lets you select which specialists are active for your project scope. See [Create and Configure a POD](/pods/create-and-configure) for the full roster.
+
+Every agent listed above runs only when assigned to a Blueprint task. SENTINEL (validation) runs on every Run regardless of POD roster configuration. Agents access only the data exposed in their dispatched task context plus the credentials scoped to the Run; no agent has standing access to the tenant's data outside an active Run.
+
+### Runs
+
+When a Blueprint is approved under a POD-configured project, Synapse creates a Run and dispatches it to the POD. The Run is the observable execution record — it contains the task-by-task specialist activity, approval gate decisions, artifacts, and delivery status.
+
+A Run is not the same as the POD itself. The POD is the team configuration. A Run is one delivery execution by that team. A single POD produces many Runs over the life of a project.
+
+> For the full Run model, see [Runs](/runs/index).
+
+### Execution sandboxes
+
+Each Run executes inside an isolated sandbox environment — not directly on your Salesforce org. The sandbox receives the code, metadata, and configuration changes produced by the specialist roster. Changes are only promoted to your org after the Run completes and you choose to push them.
+
+> PODs are project-linked delivery teams. Sandboxes are the isolated execution environments where Run work happens. These are distinct concepts. See [Sandboxes](/sandboxes/index) for the execution environment details.
+
+### Governance tier
+
+Every POD has a governance tier that controls how autonomously specialists can act, what level of testing is required before delivery, and whether human approval is needed per task or per gate. The available tiers range from **Exploration** (sandbox-only, maximum autonomy, no Salesforce deployment) to **Strict** (production-targeted, all org tests required, human approval per task — Strict maps to the `production` runtime enforcement profile where per-task approval is active).
+
+See the governance tier table in [Create and Configure a POD](/pods/create-and-configure).
+
+---
+
+## What PODs are not
+
+**PODs are not the Workflow Module.** The Workflow Module is a separate, post-launch capability for recurring and trigger-based workflow orchestration.
+
+<Note>
+  Workflow orchestration documentation is being prepared and will be added after launch.
+</Note>
+
+**PODs are not sandboxes.** A sandbox is the isolated execution environment that runs specialist work during a Run. The POD is the delivery team that produces the work. One POD can produce many Runs, each in its own sandbox.
+
+**PODs are not Jira Autopilot.** Jira Autopilot is the Jira-connected classification engine that turns inbound Jira issues into Blueprints. PODs are project-configured delivery teams. Both paths produce Runs, but through different entry points.
+
+---
+
+## POD path overview
+
+```
+Project → POD configuration → Blueprint authoring → Blueprint approval → Run dispatch
+         (roster, tier, org)    (task board)          (human gate)       (specialist execution)
+              ↓
+         Nexus monitoring → Approval gates (if triggered) → Artifacts → Run complete
+```
+
+## Governance notes
+
+POD configuration is recorded at the time each Run is dispatched. If you update a POD configuration, the change applies to future Runs only. Each Run carries a snapshot of the governance tier, specialist roster, and connected org that was active when the Run was launched. This ensures the audit trail for a completed Run is self-contained and accurate even if the POD configuration is later changed.
+
+Human approval is required at any governance gate where SENTINEL validation triggers a finding or the governance tier mandates per-task review. Approval decisions are recorded with reviewer identity and timestamp.

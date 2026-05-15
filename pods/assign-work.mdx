@@ -1,0 +1,134 @@
+---
+title: "Assign Work to a POD"
+description: "Author a Blueprint from the project task board and assign Salesforce delivery tasks to your POD's specialist roster."
+audience: "architect"
+flagship_path: "project-to-pod"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Assigning work to a POD means authoring a Blueprint from the project task board and submitting it for execution by the POD's configured specialist roster. The Blueprint is the governed delivery plan — it defines the tasks, their sequence, specialist assignments, and the approval gate that must be cleared before any execution begins.
+
+## When to use it
+
+Use this guide when you have a configured POD and are ready to define the Salesforce delivery work for the next Run. This typically follows POD setup and precedes launching a Run.
+
+## Salesforce delivery example
+
+Your **Service Cloud — Case Management Upgrade** POD is configured. The next milestone requires adding three custom fields to Case, updating the Case layout, and creating a new validation rule. You need to compose these as a Blueprint, assign appropriate specialists, and get it approved before the POD executes the work.
+
+## Required access
+
+- Admin or Delivery Lead role in the Synapse workspace
+- A project with an active POD configuration
+- Blueprint Author or Blueprint Approver permission
+
+---
+
+## The project task board
+
+The project task board is where delivery work lives before it becomes a Blueprint. Think of the task board as your backlog: a list of Salesforce delivery tasks organized by milestone, status, and priority.
+
+Each task on the board represents a discrete unit of work:
+- A metadata component to create or modify (custom field, validation rule, layout update, Apex class)
+- A deployment step
+- A test or validation requirement
+- A documentation or communication deliverable
+
+Tasks are not yet assigned to specialists on the board. Specialist assignment happens in the Blueprint composer.
+
+### Adding tasks to the board
+
+1. Navigate to your project and open the **Tasks** tab.
+2. Click **Add task** to create a new task.
+3. Give the task a clear title and description. Include the Salesforce component type in the title where possible — this helps Synapse propose the right specialist when you compose a Blueprint.
+4. Set the task type, priority, and any dependencies on other tasks.
+
+---
+
+## Composing a Blueprint from the task board
+
+Once your tasks are ready:
+
+1. Select the tasks you want to include in this delivery Run. You can select a single task or a group of related tasks.
+2. Click **Create Blueprint from selection**.
+
+The Blueprint composer opens with the selected tasks pre-loaded.
+
+### Blueprint composer
+
+In the Blueprint composer you can:
+
+- **Review the task sequence** — Synapse proposes a dependency order based on the task types and any dependencies you set on the board. Adjust the order or add dependencies if needed.
+- **Review specialist assignments** — Synapse proposes specialist assignments based on task type. For example, a task titled "Create Case custom fields" will be proposed to FORGE. An architectural review task will be proposed to AXIOM. Adjust assignments if the proposal does not match your intent.
+- **Review preflight results** — SENTINEL runs a structural preflight scan when you open the Blueprint composer. Any blockers (missing dependencies, circular dependency chains, insufficient task count for the governance tier) appear at the top. Warnings are advisory. Blockers must be resolved before you can approve the Blueprint.
+- **Add or remove tasks** — you can add tasks from the board or remove tasks from the Blueprint before approval.
+
+{/* Screenshot placeholder: Blueprint composer showing task list, specialist assignment column, dependency graph, and SENTINEL preflight results panel */}
+
+### Editing before approval
+
+The Blueprint is fully editable until you click **Approve**. You can:
+
+- Change a task's specialist assignment
+- Reorder tasks or adjust dependencies
+- Add acceptance criteria or acceptance checks to a task
+- Remove tasks that are not ready for this Run
+
+After approval, the Blueprint is locked. The audit trail for the Run records the exact task list, assignments, and SENTINEL preflight results that were present at approval.
+
+---
+
+## Approving the Blueprint
+
+When you are satisfied with the Blueprint:
+
+1. Click **Approve Blueprint**.
+2. A confirmation dialog shows:
+   - The governance tier from the POD configuration
+   - The connected org target
+   - The specialist roster that will execute the work
+3. Confirm the approval.
+
+The Blueprint is now approved and ready for execution. The POD will dispatch the Blueprint as a Run when you click **Launch Run** on the Blueprint detail page.
+
+> **What approval means:** Approving a Blueprint is a governance commitment. You are confirming that the task list, specialist assignments, and delivery scope are correct. No further edits are possible after approval. If you discover an error after approval, you must reject the Blueprint and author a new one.
+
+---
+
+## Using descriptions to generate a Blueprint
+
+If you prefer not to compose tasks manually from the board, you can describe the delivery work in plain language and let Synapse generate a Blueprint draft:
+
+1. On the project detail page, click **New Blueprint**.
+2. In the description field, describe the Salesforce delivery work: component types, scope, target environment, and any constraints.
+3. Synapse generates a task breakdown and specialist assignment proposal.
+4. Review the generated Blueprint in the composer, adjust as needed, and approve.
+
+Generated Blueprints follow the same approval and governance process as manually composed ones. All tasks generated this way appear on the project task board after the Blueprint is approved.
+
+---
+
+## What happens after approval
+
+After you approve the Blueprint, Synapse holds it in `ready` status until you launch the Run. Navigate to the Blueprint detail page and click **Launch Run** when you are ready for execution to begin.
+
+The POD dispatches the Blueprint to the configured specialist roster. From this point, monitor progress in Nexus.
+
+Next: [Nexus monitoring for POD Runs](/pods/mission-control).
+
+---
+
+## Governance notes
+
+The Blueprint approval step is the primary human gate in the Project to POD path. No specialist executes work until a Blueprint is approved by an authorized reviewer.
+
+Approval is recorded with:
+- Reviewer identity and timestamp
+- The exact task list, specialist assignments, and dependency graph at the time of approval
+- SENTINEL preflight results (including any warnings or blockers that were present and acknowledged)
+
+This record is part of the Run's permanent audit trail. It is available for review in the Run detail page in Nexus and is included in any compliance export.

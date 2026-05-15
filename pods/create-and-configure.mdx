@@ -1,0 +1,141 @@
+---
+title: "Create and Configure a POD"
+description: "Set up a project-linked Salesforce delivery team: choose your specialist roster, connected org, and governance tier."
+audience: "architect"
+flagship_path: "project-to-pod"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Creating a POD establishes the delivery team context for a Synapse project. This page covers how to create a POD, select your specialist roster, configure your connected Salesforce org, and choose the governance tier that matches your target environment.
+
+## When to use it
+
+Configure a POD when you are starting structured Salesforce delivery work for a project and want a consistent delivery team, org target, and governance posture applied to all Blueprints and Runs under that project.
+
+## Salesforce delivery example
+
+You are beginning **Service Cloud — Case Management Upgrade**. Before authoring any Blueprints, you configure a POD that specifies AXIOM and FORGE as the delivery leads, targets your staging org, and sets the Standard governance tier so that all local tests must pass and SENTINEL validation is blocking before any deployment proceeds.
+
+## Required access
+
+- Admin or Delivery Lead role in the Synapse workspace
+- At least one project in Synapse
+- At least one Salesforce sandbox or scratch org connected to your workspace
+
+---
+
+## Step 1 — Open the project and navigate to POD configuration
+
+1. In the Synapse left sidebar, navigate to **Projects**.
+2. Select your project.
+3. On the project detail page, select the **POD** tab.
+4. Click **Create POD** if no POD exists, or **Edit POD** to update an existing configuration.
+
+---
+
+## Step 2 — Name the POD
+
+Give the POD a short label that identifies the delivery team for this project, for example: *Case Management Upgrade — Delivery Team*. The name appears in Run headers and notifications.
+
+---
+
+## Step 3 — Select the specialist roster
+
+The specialist roster defines which Synapse leads and specialists handle work dispatched by this POD. Each specialist handles a distinct class of Salesforce delivery work.
+
+### User-facing leadership agents
+
+These four leads are the primary agents you interact with directly through Nexus and the Blueprint review surface:
+
+| Agent | Role | When to include |
+|-------|------|-----------------|
+| **AXIOM** | Architecture Lead — solution design, data modeling, integration patterns, technical specifications | Any Blueprint with schema changes, new integrations, or architectural decisions |
+| **LUMEN** | Business Analysis Lead — requirements translation, acceptance criteria, stakeholder context | Blueprints that involve requirements work or business-context-heavy delivery |
+| **SYNTH** | Data and Configuration Lead — metadata configuration, platform setup, data structures | Blueprints with configuration, data, or platform setup tasks |
+| **VEKTOR** | Delivery Coordination Lead — multi-specialist orchestration, delivery status, Run oversight | All multi-specialist Runs; VEKTOR coordinates when multiple leads are active |
+
+### Specialist agents
+
+Specialist agents handle targeted execution work within a Run. They are dispatched by the leadership leads and do not require direct interaction in most Runs:
+
+- **FORGE** — Build and implementation: writes Apex, LWC, and metadata configuration
+- **SENTINEL** — Validation: runs the governance gate pipeline (syntax, PMD, ESLint, test execution, coverage verification)
+- **GUARDIAN** — Security: reviews security model changes, permission sets, sharing rules
+- **RELAY** — Communications: posts Run results back to Jira, Slack, or other connected destinations
+- **ATLAS** — Documentation: generates delivery documentation and change notes
+- **KEYSTONE** — Infrastructure: handles CI/CD configuration, scratch org provisioning, and DevHub operations
+
+Additional specialists may be available depending on your workspace configuration.
+
+### Roster guidance
+
+For most Salesforce delivery projects, a recommended starting roster is:
+
+- AXIOM (architecture review on every significant change)
+- FORGE (build execution)
+- SENTINEL (validation — always recommended)
+
+Add LUMEN for requirements-heavy work. Add GUARDIAN if the Blueprint touches security or permissions. Add RELAY if you want automatic Jira or Slack comment-back on Run completion.
+
+---
+
+## Step 4 — Select the connected Salesforce org
+
+Choose the Salesforce org this POD targets for delivery:
+
+- **Sandbox org** — an existing connected Salesforce sandbox. Synapse uses the CLI Auth URL associated with the connected source.
+- **Scratch org** — Synapse provisions a fresh scratch org from your DevHub pool for each Run. Scratch orgs are isolated and automatically deleted after the Run completes.
+
+The connected org is where SENTINEL deploys for validation and where final artifacts are staged before you promote to a higher environment.
+
+> Your Salesforce org is not modified until a Run completes successfully and you explicitly promote the artifacts. All execution work happens in an isolated sandbox environment first.
+
+---
+
+## Step 5 — Set the governance tier
+
+The governance tier controls how autonomously specialists act, what testing is required, and when human approval is required before the Run can proceed.
+
+| Tier | Runtime profile | Sentinel enforcement | Test requirement | Use when |
+|------|----------------|---------------------|-----------------|---------|
+| **Exploration** | `development` | Advisory | None | Sandbox-only investigation; no Salesforce deployment |
+| **Development** | `development` | Advisory | Specified tests only | Deploying to a dev sandbox or scratch org with targeted test coverage |
+| **Accelerated** | `staging` | Advisory | Fast local tests | Fast-track delivery to a lower environment; Sentinel advises but does not block |
+| **Standard** | `staging` | Blocking | All local tests | Staging deployment; Sentinel blocks on failures; no per-task approval |
+| **Strict** | `production` | Blocking | All org tests | Production-targeted delivery; every task requires human approval before dispatch |
+
+**Choosing a tier:**
+
+- If you are targeting a development sandbox or scratch org and want fast iteration, use **Development**.
+- If you are targeting a staging or UAT org and want full validation coverage, use **Standard**. Standard enforces blocking Sentinel gates but does not require per-task human approval.
+- If the Blueprint will ultimately touch production, use **Strict**. Strict maps to the `production` runtime enforcement profile, which sets `requireApproval = true` and requires explicit human approval before each specialist task is dispatched.
+
+> The governance tier is stored at the POD level and applies to all Runs for this project. If a specific Blueprint requires a different tier, you can override it at the Blueprint level before approval.
+
+---
+
+## Step 6 — Save the POD configuration
+
+Click **Save POD configuration**. The POD is now active for the project.
+
+Synapse records the configuration snapshot. Future Runs launched under this project will use this roster, org, and governance tier. Runs already in progress are not affected by configuration changes.
+
+---
+
+## Updating a POD configuration
+
+You can update the POD configuration at any time. Changes apply to Runs that have not yet been launched. Runs already in progress use the configuration that was active when they were launched.
+
+To update: navigate to the project, open the **POD** tab, click **Edit POD**, make your changes, and save.
+
+---
+
+## Governance notes
+
+The governance tier is the primary control over how much human approval is required during a Run. At Standard tier (runtime profile: `staging`) and Strict tier (runtime profile: `production`), SENTINEL validation is blocking — if validation fails, the Run pauses at an approval gate and cannot proceed until a reviewer approves or rejects the finding. Per-task human approval before each dispatch is enforced only at Strict tier.
+
+Every POD configuration save is recorded with the configuring user's identity and timestamp. This record is available in the project audit log. If a production-targeted Run later requires review, the audit trail includes the exact tier and roster that were configured when the Run was launched.

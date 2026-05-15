@@ -1,0 +1,170 @@
+---
+title: "Sandbox Isolation and Logs"
+description: "How execution sandboxes are isolated, where logs are captured, retention behavior, cleanup, and production safeguards."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+This page explains the isolation guarantees that execution sandboxes provide, where Run logs and artifacts are captured, how long they are retained, and what happens when a sandbox is cleaned up. It also covers the specific safeguards in place for production-targeted Runs.
+
+## When to use it
+
+Read this page when:
+
+- You need to understand the isolation boundary between a Run and your Salesforce org or other team members' work
+- You are evaluating Synapse from a security or compliance perspective and need the technical isolation model
+- You want to understand where to find logs after a Run completes and how long they are retained
+
+## Salesforce delivery example
+
+Your security architect asks: "When FORGE is building Apex code in a sandbox, can it access our production org credentials, read other tenants' data, or write to a shared file system that other Runs can see?" The answer is no — and this page explains why.
+
+## Required access
+
+- Any authenticated Synapse user can view logs for Runs they have access to.
+- Compliance export of Run logs requires Admin or Audit role.
+
+---
+
+## Isolation guarantees
+
+### Tenant isolation
+
+Execution sandboxes are isolated at the tenant level. No two tenants share a sandbox or a sandbox network. A Run from Tenant A cannot access the file system, memory, or network of a Run from Tenant B.
+
+This is enforced at the compute layer, not just by access control. Each sandbox is a separate compute environment with its own process namespace, file system, and network interface.
+
+### Run isolation (within a tenant)
+
+Within a single tenant, concurrent Runs execute in separate sandboxes. Run A cannot access the working directory, intermediate outputs, or credentials of Run B, even if both Runs are for the same project.
+
+When Blaxel is the provider and parallel group isolation is active, each task group receives its own isolated sandbox. Tasks within a group share a sandbox; tasks in different groups do not.
+
+### Credential isolation
+
+Credentials injected into a sandbox are scoped to that Run. The injection mechanism:
+
+- Credentials are resolved at Run start from the scoped secrets configuration for the Blueprint
+- They are injected as environment variables into the sandbox process environment
+- They are not written to disk, not logged in Run output, and not accessible via the filesystem
+- They are not available to other Runs or other tenants
+
+If a credential is not in the Blueprint's scope, the sandbox does not have it. A GitHub token scoped to one repository does not give the sandbox access to other repositories. A Salesforce CLI Auth URL for a sandbox org does not give the sandbox access to your production org.
+
+See [Scoped Secrets](/secrets/scopes) for the full credential scoping model.
+
+### Network isolation
+
+Execution sandboxes use the network model provided by E2B or Blaxel. In practice this means specialists can reach GitHub, the connected Salesforce org via CLI, and standard package registries needed for build tooling (npm, pip). There is no public inbound route to a sandbox. Synapse does not add an additional egress allowlist on top of the provider's default — egress is constrained by the provider's sandbox networking model.
+
+---
+
+## What specialists can and cannot do
+
+**Specialists can:**
+- Read and write files within the sandbox working directory (typically the cloned repository)
+- Execute shell commands within the sandbox (git, Salesforce CLI, npm, Apex test runner)
+- Deploy to the Salesforce org connected via the injected CLI Auth URL
+- Read secrets that are in scope for the Run
+
+**Specialists cannot:**
+- Access any Salesforce org not connected via the Run's injected credentials
+- Access credentials not in the Blueprint's scope
+- Write to persistent storage outside the sandbox working directory
+- Execute arbitrary network requests to destinations outside the allowed list
+- Access other tenants' data, credentials, or sandboxes
+- Self-approve a governance gate or bypass SENTINEL validation
+
+---
+
+## Log capture
+
+### Where logs are captured
+
+Every specialist action during a Run is logged. Log capture happens at two levels:
+
+**Task-level logs:** Each task produces a structured log of specialist activity — commands executed, outputs received, decisions made, and errors encountered. Task-level logs are streamed to Nexus in real time during the Run and stored in the Run record when the task completes.
+
+**Run-level event log:** A higher-level audit log records Run lifecycle events: sandbox allocation, task dispatch, governance gate triggers, approval decisions, branch commits, sandbox release, and Run completion. This log records the actor identity and timestamp for every event.
+
+### Viewing logs
+
+**During a Run:** Open the Run in Nexus. Each task card shows a live streaming log. Click any task card to expand the full log for that task.
+
+**After a Run:** The Run detail page in Nexus shows the complete log for each task and the Run-level event log. Both are available for the full retention period.
+
+**Downloading logs:** From the Run detail page, click **Export logs** to download the full structured Run log as a JSON file. This file includes all task-level output, all governance events, and all artifact hashes.
+
+---
+
+## Artifact retention
+
+Artifacts produced during a Run (source file diffs, deployment manifests, test reports, SENTINEL validation reports) are stored in Nexus and associated with the Run record.
+
+Artifact retention follows the workspace retention policy. The default retention period is 90 days from Run completion. After the retention period expires, artifacts are permanently deleted.
+
+If you need to retain artifacts beyond the default period, download them from the Run detail page before the retention window closes. Compliance export tools are available for bulk export of Run records.
+
+---
+
+## Sandbox cleanup
+
+### E2B cleanup
+
+When an E2B sandbox Run completes:
+
+1. The platform commits any outstanding specialist work to the GitHub branch.
+2. The branch is pushed to the connected GitHub repository origin.
+3. The sandbox compute environment is terminated and all working-directory content is deleted.
+4. The sandbox record in the Synapse database is marked as `terminated` with a timestamp.
+
+Cleanup happens automatically. No manual action is required. If the branch push fails, the failure is logged and the Run is marked with a warning, but the sandbox is still terminated.
+
+### Blaxel cleanup
+
+When a Blaxel sandbox Run completes:
+
+1. The platform commits and pushes any outstanding work to the GitHub branch.
+2. The sandbox is hibernated rather than terminated. The working directory is preserved.
+3. A subsequent Run on the same project can resume from the hibernated sandbox.
+
+Blaxel sandboxes are fully terminated when:
+- The project is archived
+- An admin explicitly releases the sandbox from workspace settings
+- The sandbox has been dormant past the configured idle timeout
+
+---
+
+## Production safeguards
+
+Synapse's execution model is designed so that specialist work in a sandbox never reaches your production Salesforce org unless you explicitly configure and approve it.
+
+**Safeguards by default:**
+- Production-targeted Runs require the Strict governance tier (Strict maps to the `production` runtime enforcement profile, which sets `requireApproval = true` and mandates all-org test passage and human approval before each task dispatch)
+- SENTINEL validates all code and metadata against Salesforce deployment standards before any deployment step runs
+- Deployment to a connected org is a discrete step — specialists write and test in the sandbox first; deployment is a separate gated action
+- No sandbox has credentials for any org beyond the one explicitly connected to the Run
+
+**If a governance gate triggers:**
+The Run pauses. The specialist stops. No further execution or deployment happens until a reviewer acts in Nexus. If the reviewer rejects the finding, the Run is stopped and no deployment occurs.
+
+**The sandbox never deploys autonomously to production.** A production deployment from a Synapse Run requires Strict governance tier configuration (runtime profile: `production`), SENTINEL passing all org tests, and explicit human approval at the deployment gate. These requirements are enforced at the API server and cannot be bypassed through the application surface.
+
+---
+
+## Governance notes
+
+The isolation and log model described here is the evidentiary foundation for the audit trail. Every Run produces a permanent, non-mutable record of:
+
+- Which sandbox was used (provider, ID, lifetime)
+- Which credentials were in scope (names only, not values)
+- Every specialist action taken inside the sandbox
+- Every governance gate triggered and the human decision made
+- Every artifact produced and its hash
+
+This record is available in Nexus for the duration of the retention period and can be exported for compliance review.

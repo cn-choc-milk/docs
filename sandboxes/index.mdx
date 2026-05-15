@@ -1,0 +1,109 @@
+---
+title: "Sandboxes"
+description: "Execution sandboxes are the isolated runtime environments where approved Run work executes — distinct from Salesforce org sandboxes."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+An execution sandbox is the isolated runtime environment where a Run's specialist work happens. When you approve a Blueprint and launch a Run, Synapse allocates an execution sandbox — a securely isolated compute environment with access to your connected GitHub repository, scoped credentials, and the tooling specialists need to build, test, and validate Salesforce changes.
+
+Execution sandboxes sit between Blueprint approval and your Salesforce org. No specialist work reaches your org until it has completed inside a sandbox and you choose to promote it.
+
+## When to use it
+
+Execution sandboxes are always in use when a Run is active. You do not create or manage sandboxes directly — Synapse allocates and manages them for you. This page is the right place to understand what execution sandboxes are, what isolation they provide, and how they relate to the rest of the delivery model.
+
+## Salesforce delivery example
+
+A Run for the **Service Cloud — Case Management Upgrade** project is dispatched. Synapse allocates a sandbox, clones your connected GitHub repository into it, and gives FORGE the tools to write Apex and metadata files there. SENTINEL then deploys from the sandbox to your connected Salesforce sandbox org for validation. Your production org and your team's local workstations are never touched by the Run work.
+
+## Required access
+
+- No direct sandbox access is required from end users. Sandboxes are managed by the platform.
+- Sandbox provider configuration (E2B or Blaxel) is available to Admins under workspace settings.
+
+---
+
+## Execution sandboxes vs Salesforce org sandboxes
+
+This distinction matters.
+
+| Concept | What it is |
+|---------|-----------|
+| **Execution sandbox** (this page) | An isolated compute environment that runs specialist work during a Synapse Run. Not a Salesforce environment. |
+| **Salesforce org sandbox** | A sandboxed copy of your Salesforce org (Full, Partial, Developer, Developer Pro). A Salesforce concept entirely separate from Synapse execution. |
+
+When Synapse documentation says "sandbox," it means the execution sandbox unless the context explicitly says "Salesforce sandbox org" or "connected sandbox org." SENTINEL deploys *to* a Salesforce sandbox org *from* an execution sandbox. These are two different things in the same pipeline.
+
+> PODs are project-linked delivery teams. Sandboxes are the execution environments where POD Run work happens. A POD configuration sets which Salesforce org to target; the execution sandbox is where the code is written and tested before that deployment.
+
+---
+
+## What an execution sandbox contains
+
+When Synapse allocates a sandbox for a Run, it provisions:
+
+- A Linux compute environment with the Salesforce CLI, Node.js, and the tooling specialists need (Apex PMD, ESLint for LWC, Jest for component testing)
+- A clone of your connected GitHub repository at the branch configured for the Run
+- Scoped credentials — only the secrets explicitly granted to this Run are injected. Specialists cannot access credentials outside their scope.
+- A working directory where specialists write files, run tests, and stage artifacts
+
+The sandbox has no persistent state by default. When the Run completes or is cancelled, the sandbox is terminated and the compute environment is cleaned up. Changes that need to persist are committed to the GitHub branch before the sandbox is released.
+
+---
+
+## Sandbox providers
+
+Synapse supports two execution sandbox providers:
+
+### E2B (default)
+
+E2B is the default provider for most Runs. It creates a fresh, transient sandbox for each Run. The sandbox exists for the lifetime of the Run and is terminated when the Run ends.
+
+E2B sandboxes use a shared-sandbox model: all specialists in a Run work sequentially in the same sandbox. This ensures a single, linear commit history on the branch.
+
+### Blaxel (persistent)
+
+Blaxel is a persistent sandbox provider available for workspaces where parallel task execution is needed. Blaxel sandboxes persist between Runs for the same project, allowing subsequent Runs to resume from a known state rather than re-provisioning from scratch.
+
+Blaxel supports parallel group isolation: tasks in parallel groups can each receive their own isolated sandbox environment, enabling concurrent specialist work with branch-per-group merging.
+
+Blaxel is selected automatically for multi-task plans when the feature flag is enabled for your workspace, or explicitly in the POD configuration if your admin has enabled provider selection.
+
+> See [Configure Sandboxes](/sandboxes/configure) for how to choose between providers and what settings the platform exposes.
+
+---
+
+## Isolation model
+
+Each Run's execution sandbox is isolated from:
+
+- Other tenants' Runs (tenant isolation at the compute layer)
+- Other Runs from the same tenant running concurrently (sandbox-per-Run or sandbox-per-group, depending on provider)
+- Your production Salesforce org (no direct connection; deployment requires explicit SENTINEL approval and Run completion)
+
+Credentials injected into a sandbox are scoped to that Run. A credential granted for a GitHub repository does not give the sandbox access to unrelated repositories or services. See [Scoped Secrets](/secrets/scopes) for the credential scoping model.
+
+---
+
+## Security and governance
+
+Synapse's sandbox model is designed for enterprise Salesforce delivery. Key guarantees:
+
+- **No unrestricted org access.** The sandbox can only interact with the Salesforce org you explicitly connected and only through the CLI Auth URL you granted.
+- **Approval gates before deployment.** SENTINEL validation runs inside the sandbox before any deployment to a Salesforce org. Blocking findings pause the Run at an approval gate. No deployment proceeds without human approval when a blocking finding is present.
+- **Production safeguards.** Runs targeting a production Salesforce org require the Strict governance tier, which mandates human approval before each specialist task and all-org test passage before deployment.
+- **Credential isolation.** Secrets are injected as environment variables scoped to the sandbox lifetime. They are not logged, not written to disk, and not accessible to other tenants.
+
+> For full details on isolation guarantees, log retention, and cleanup behavior, see [Sandbox Isolation and Logs](/sandboxes/isolation-and-logs).
+
+---
+
+## Governance notes
+
+Execution sandboxes are production safeguards, not risks. Every Run executes in an isolated environment with scoped credentials, approval gates, and an audit trail before anything reaches your Salesforce org. The sandbox is the mechanism that makes governed delivery possible — it separates specialist work from production impact and gives you the observability to review what happened before you decide to promote it.
