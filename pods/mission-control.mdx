@@ -1,0 +1,199 @@
+---
+title: "Nexus — POD Run Monitoring"
+description: "Monitor active POD Runs in Nexus: track specialist activity, manage the approval queue, and review artifacts as they are produced."
+sidebarTitle: "Nexus"
+audience: "architect"
+flagship_path: "project-to-pod"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Nexus is the in-product monitoring surface for active and completed POD Runs. When a Blueprint is approved and a Run is dispatched, Nexus is where you watch specialist activity in real time, respond to approval gates, and collect the artifacts that come out of the Run.
+
+> **On terminology:** "Nexus" is the in-product surface name for Run monitoring and governance. It is the same pattern as how PODs are the product-surface name for project-linked delivery teams. Outside of naming these specific surfaces, use canonical delivery terms: Runs, approval gates, specialists, artifacts.
+
+## When to use it
+
+Open Nexus when:
+
+- A Blueprint has been approved and a Run is in progress
+- You have received a notification that a Run is paused at an approval gate
+- You want to review the full execution log or download artifacts from a completed Run
+
+## Salesforce delivery example
+
+Your **Service Cloud — Case Management Upgrade** POD has dispatched a Run. FORGE is building the custom fields. SENTINEL is queued for validation. You open Nexus to watch FORGE's output, confirm that SENTINEL's gate fires as expected, and approve the deployment to your staging org.
+
+## Required access
+
+- Admin, Delivery Lead, or Run Viewer role in the Synapse workspace
+- Blueprint Approver permission to act on approval gate decisions
+
+---
+
+## The Nexus Run view
+
+When you navigate to **Nexus** and select a Run, you see:
+
+### Run header
+
+The header shows:
+- **Run name** — derived from the approved Blueprint name and project
+- **Run status** — current lifecycle state (see status table below)
+- **Governance tier** — the tier that was active when the Run was launched
+- **Elapsed time** — wall-clock time since the Run was dispatched
+- **Connected org** — the Salesforce target for this Run
+
+### Task cards
+
+The task panel shows one card per Blueprint task. Each card displays:
+
+- The task title and specialist assigned
+- Current state: `queued`, `in-progress`, `awaiting-approval`, `completed`, `failed`
+- A streaming log of what the specialist is actively doing
+- Any output artifacts produced by the task when it completes
+
+Tasks execute in dependency order. When a task completes, any tasks that depended on it become eligible for dispatch. The dispatcher checks for eligible tasks continuously and sends them to the assigned specialist without manual intervention.
+
+### Approval queue
+
+The approval queue appears when one or more tasks have triggered a governance gate and the Run is paused.
+
+**When a gate triggers:**
+
+- SENTINEL's validation pipeline finds a blocking issue (syntax error, governor limit violation, PMD finding, insufficient test coverage)
+- The governance tier is Strict, which requires per-task human approval before dispatch
+
+The approval queue shows each pending decision with:
+- The finding or reason for the gate
+- The affected code, metadata, or deployment artifact
+- The specialist's proposed remediation (if one exists)
+- Two actions: **Approve** (allow the Run to proceed) or **Reject** (stop the Run)
+
+Approvals and rejections are both recorded in the audit trail. Nexus does not allow a gated Run to proceed without an explicit decision.
+
+### Artifacts panel
+
+As tasks complete, their artifacts appear in the artifacts panel:
+
+- Source file diffs and generated code
+- Deployment manifests and package.xml contents
+- Test execution reports and coverage summaries
+- SENTINEL validation reports
+
+You can view artifacts inline or download them individually. The full artifact set is also available after the Run completes.
+
+{/* Screenshot placeholder: Nexus Run view with task cards, streaming specialist log, approval queue with one pending decision, and artifacts panel */}
+
+---
+
+## Run status reference
+
+| Status | Meaning | Action needed |
+|--------|---------|--------------|
+| `queued` | Run accepted; sandbox allocation in progress | None — wait for dispatch |
+| `in-progress` | Specialists are actively executing tasks | None — monitor as needed |
+| `awaiting-approval` | Run paused at a governance gate | Review and act on the approval queue |
+| `completed` | All tasks finished and all gates passed | Review artifacts; promote if ready |
+| `deploy_failed` | Specialist work succeeded; Salesforce deployment step failed | See [Run Troubleshooting](/runs/troubleshooting) |
+| `failed` | A task failed and could not recover | Review the failure detail; decide whether to re-run |
+| `cancelled` | Run was stopped by a user action | No further action required |
+
+---
+
+## Acting on an approval gate
+
+When the Run enters `awaiting-approval`:
+
+1. You receive a notification (in-app and, if configured, via Slack or email).
+2. Open Nexus and navigate to the **Approval queue**.
+3. Read the SENTINEL finding. The finding includes:
+   - The validation gate that triggered (e.g., PMD scan, test coverage, syntax check)
+   - The specific file or metadata component involved
+   - The severity and a plain-language explanation
+4. If SENTINEL has proposed a remediation, review it. You can accept the proposed fix or provide alternative instructions.
+5. Click **Approve** to accept the resolution and allow the Run to continue, or **Reject** to stop the Run.
+
+**After approval:** The Run moves back to `in-progress` and the next eligible tasks are dispatched.
+
+**After rejection:** The Run moves to `failed`. The full execution log and the rejection decision are preserved in the audit trail.
+
+---
+
+## Intervening in an active Run
+
+If you need to stop a Run that is in progress:
+
+- Click **Cancel Run** in the Run header. The Run moves to `cancelled`. Specialists complete their current task before the Run stops; no partial task output is pushed to the connected org.
+- To pause a Run without cancelling it, use **Pause Run** if the option is available for your governance tier.
+
+Cancellations are logged with the cancelling user's identity and timestamp.
+
+---
+
+## After the Run completes
+
+When the Run reaches `completed` or `deploy_failed`:
+
+- The artifacts panel shows the full output.
+- The execution log is available for download as a structured JSON file.
+- If Jira or Slack notifications are configured for this POD, Synapse posts the Run result to those destinations automatically.
+
+Artifacts and logs are retained in Nexus for the retention period configured for your workspace. See [Sandboxes — isolation and logs](/sandboxes/isolation-and-logs) for log and artifact retention details.
+
+---
+
+## Steering Reports
+
+The Steering Report is an auto-generated executive dashboard that consolidates project status, risks, milestones, and delivery metrics for leadership consumption. It pulls data from Blueprints, Runs, RAID Logs, and connected project sources, and supports one-click export to PDF for board meetings and client quarterly business reviews.
+
+### When to use it
+
+Generate a Steering Report for:
+- Weekly leadership meetings — present project status to executives
+- Client QBRs — share progress with client sponsors
+- Board meetings — report on portfolio health
+- Stakeholder updates — email reports to external stakeholders
+- Audit preparation — generate compliance documentation
+
+### Generating a report
+
+1. Navigate to **Steering Report** in the sidebar, or from any project click **Reports > Steering Report**.
+2. Select the project to report on.
+3. Choose the reporting period: This Week, This Month, This Quarter, or a custom date range.
+4. The report generates in five to ten seconds.
+
+### Report sections
+
+**Executive Summary** — Overall status (green/amber/red), key accomplishments, and major concerns.
+
+**Key Metrics** — Budget planned versus actual, timeline percentage complete, weekly velocity, and aggregated RAID risk score.
+
+**Milestones** — Upcoming milestones (next 30 days), recently completed milestones, and overdue milestones highlighted in red.
+
+**RAID Highlights** — Top risks by severity score, open issues requiring attention, and critical dependencies.
+
+**Charts** — Burndown chart (tasks remaining over time), risk heat map (impact × likelihood), budget burn rate.
+
+### Exporting
+
+Click **Export to PDF** in the top-right. Choose cover page, RAID log appendix, page orientation, and color scheme options. The PDF downloads immediately.
+
+### Version history
+
+Click **Version History** in the toolbar to compare two report dates. The comparison view shows metric deltas, new risks added, milestones completed, and status changes.
+
+---
+
+## Governance notes
+
+Nexus is the audit surface for every governance decision made during a Run. Every approval gate decision — approval or rejection, the reviewer's identity, the timestamp, and the exact finding reviewed — is recorded and accessible in the Run detail view.
+
+Runs do not bypass governance gates. If a Run is at `awaiting-approval`, it cannot proceed to the next task until an authorized reviewer acts. There is no mechanism for the system to self-approve a blocked gate.
+
+The Nexus audit log is the record of human responsibility in the delivery process. Reviewers can see who approved what, when, and in response to which SENTINEL finding.
+
+Steering Reports are auto-generated from live data and do not modify any project records. Exported PDFs are point-in-time snapshots — they do not update after export. Version history preserves past snapshots for audit and compliance documentation.

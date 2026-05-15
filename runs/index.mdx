@@ -1,0 +1,84 @@
+---
+title: "Runs"
+description: "A Run is the observable execution record of an approved Blueprint — fully logged, auditable, and interruptible at every governance gate."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+A Run is the live, observable execution instance created when an approved Blueprint begins work. Every Salesforce delivery action in Synapse — from a metadata field deployment to an Apex code review — happens inside a Run. Runs are the primary unit of traceability: if something was built, tested, or deployed in Synapse, there is a Run record for it.
+
+A Run is not a background job you submit and forget. It is an observable record you can watch in real time, pause, inspect, and audit after the fact.
+
+## When to use it
+
+Every time you approve a Blueprint, a Run is created. You interact with Runs when:
+
+- Monitoring active specialist work in Nexus
+- Reviewing artifacts (source changes, deployment results, test reports) after work completes
+- Responding to governance gates that pause execution and require your decision
+- Diagnosing a failure — all Run logs and specialist output are retained
+- Demonstrating to stakeholders what happened and when during a delivery cycle
+
+## Salesforce delivery example
+
+You approved a Blueprint to add a custom field and update the Account layout. The resulting Run shows:
+
+- AXIOM's dependency analysis for the Account object
+- FORGE's file commits to the sandbox branch (`CustomField/Account.Opportunity__Scoring__c.field-meta.xml`, `Layout/Account-Account Layout.layout-meta.xml`)
+- SENTINEL's deployment validation result (gate passed, 98% test coverage)
+- Total elapsed time: 6 minutes 42 seconds
+- Run state: `completed`
+
+The Run is linked to the originating Jira issue (SYN-42) and the Blueprint that was approved. Nothing in this Run can be edited retroactively through the application surface — the Run record is write-once from the application layer.
+
+## Required access
+
+- Any authenticated Synapse user can view Runs for projects they have access to
+- Blueprint Approver role is required to approve gated actions that pause a Run
+- Admin role is required to cancel a Run
+
+## The Run record
+
+Each Run contains:
+
+| Component | What it captures |
+|-----------|-----------------|
+| **Status** | Current state in the Run lifecycle (`queued`, `in-progress`, `awaiting-approval`, `completed`, and others — see [Run Lifecycle](/runs/lifecycle)) |
+| **Tasks** | One card per Blueprint task, showing specialist assignment, current state, and output |
+| **Specialist output** | Streaming log from each specialist during execution and full log after completion |
+| **Artifacts** | All outputs: source file diffs, deployment results, test coverage reports, sandbox branch reference |
+| **Governance log** | Every gate evaluation, approval decision, and state transition with timestamps and actor identity |
+| **Origin** | Link to the Blueprint that was approved, and the Signal (Jira issue, schedule, or manual event) that triggered it |
+
+## Runs are isolated
+
+Every Run executes inside an isolated Execution Node — a sandboxed environment that includes a sandbox branch in your connected repository and optionally a Salesforce scratch org. Your production org is not involved unless you explicitly configure and approve a production deployment gate.
+
+Isolation means:
+- Specialists cannot reach outside the Execution Node without an explicit, scoped tool grant
+- Multiple Runs can execute concurrently without interfering with each other
+- When a Run completes or fails, its Execution Node is cleaned up; no state persists between Runs unless explicitly promoted
+
+## Runs support governance at every gate
+
+Synapse does not execute Runs as background jobs that you review after the fact. Every Run includes governance checkpoints defined in the approved Blueprint. A SENTINEL gate that finds a governor limit violation pauses the Run and notifies you. You decide whether to remediate and continue or close the Run. Speed and control are not in tension — governance gates are the mechanism that allows Synapse to execute at pace without losing human oversight.
+
+See [Run Lifecycle](/runs/lifecycle) for the complete state machine and governance transitions.
+
+## Related pages
+
+- [Run Lifecycle](/runs/lifecycle) — states, transitions, and governance gates
+- [Viewing Logs and Artifacts](/runs/viewing-logs-and-artifacts) — where Run artifacts live and how to access them
+- [Run Troubleshooting](/runs/troubleshooting) — diagnosing common Run failures
+- [Synapse Delivery Lifecycle](/core-concepts/synapse-delivery-lifecycle) — how Runs fit into the Signal-to-Run model
+
+## Governance notes
+
+Run records are write-once from the application surface. Synapse application code does not provide endpoints to delete or modify completed Run events, governance decisions, or artifact references. Direct database mutation requires platform-administrator-level Supabase access and is itself logged at the database layer. This is a design choice, not a limitation — it enables the audit trail that enterprise Salesforce delivery governance requires.
+
+Run retention follows tenant configuration. By default, Run records and their logs are retained indefinitely. Contact your Synapse admin to review your tenant's retention policy.

@@ -1,0 +1,142 @@
+---
+title: "Autopilot Routing Rules"
+description: "How Autopilot routing rules determine which Jira issues become Blueprints, what category they map to, and how to configure the rules."
+audience: "admin"
+flagship_path: "jira-to-run"
+coming_soon: false
+last_reviewed: "2026-05-14"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Routing rules govern which Jira issues Autopilot classifies, what category they are classified as, and whether they generate a Blueprint or are logged as no-ops. Rules are evaluated per project and per issue event. Changing a routing rule takes effect immediately for newly received Jira webhook events — it does not re-classify already-received issues.
+
+For a conceptual overview of how Autopilot classifies issues, see [Autopilot — Jira Integration](/autopilot/jira).
+
+## When to use it
+
+Use routing rules when:
+
+- You want to exclude certain Jira issue types or labels from Autopilot classification
+- You want to map a custom Jira label or component to a specific Blueprint category
+- A Jira issue is generating the wrong Blueprint type and you need to override the default pattern
+- You want to restrict which Jira projects send issues to Autopilot
+
+## Salesforce delivery example
+
+Your team uses the Jira label `sf-infra` to mark issues that affect shared infrastructure (permission sets, profiles, connected apps). You want these issues to always classify as **Governance scan** Blueprints rather than the default Metadata change category. You add a routing rule: `label = sf-infra → category = governance-scan`. From that point on, any issue with that label generates a SENTINEL-led validation Blueprint instead of a build-focused Blueprint.
+
+## Required access
+
+- Synapse Admin role to create, edit, or delete routing rules
+- Jira integration connected with at least one monitored project
+
+---
+
+## Rule anatomy
+
+Each routing rule has four parts:
+
+| Field | What it does |
+|-------|-------------|
+| **Condition** | The Jira field and value that must match (label, issue type, component, project key) |
+| **Action** | What happens when the condition matches: `classify-as`, `skip`, `require-label` |
+| **Category** (for `classify-as` action) | The Blueprint category to assign: `apex`, `lwc`, `metadata-change`, `deployment`, `governance-scan` |
+| **Priority** | Rules are evaluated in priority order; first match wins |
+
+---
+
+## Rule types
+
+### Skip rules
+
+A skip rule prevents an issue from generating a Blueprint. The issue is logged as a no-op with the skip reason.
+
+**Example:** Skip all sub-tasks.
+
+```
+Condition: issuetype = Sub-task
+Action: skip
+Reason logged: "Sub-tasks are excluded from Autopilot classification"
+```
+
+**Built-in skip behavior (not configurable):**
+- Issues with label `synapse-skip` are always skipped
+- Issues with label `no-autopilot` are always skipped
+- Sub-tasks of issues that already generated a Blueprint are skipped (duplicate prevention)
+
+### Category override rules
+
+A category override forces a specific Blueprint category regardless of what the default pattern matching would return.
+
+**Example:** Force governance scan for a specific Jira component.
+
+```
+Condition: component = "Shared Platform Infra"
+Action: classify-as
+Category: governance-scan
+```
+
+### Project restriction rules
+
+A project restriction rule limits Autopilot to specific Jira project keys. Issues from projects not on the monitored list are ignored at the webhook level and do not appear in Unclassified.
+
+Project restriction is configured in **Settings > Integrations > Jira > Monitored Projects**, not in the routing rules editor.
+
+---
+
+## Configuring routing rules
+
+<Note>
+  The routing rules configuration UI is being prepared and will be added after launch.
+</Note>
+
+At launch, routing rules are configured by a Synapse Admin through the Jira Autopilot settings panel. Navigate to **Jira Autopilot > Settings > Routing Rules** to:
+
+1. View the current rule set in priority order
+2. Add a new rule using the rule editor
+3. Edit an existing rule
+4. Change rule priority using drag-to-reorder
+5. Delete a rule (takes effect immediately for future events)
+
+---
+
+## Default rules
+
+Autopilot ships with a default rule set that covers common Salesforce delivery patterns. Default rules have the lowest priority and are overridden by any user-defined rule.
+
+| Default rule | Condition | Category assigned |
+|-------------|-----------|------------------|
+| Apex patterns | summary/description contains `apex`, `trigger`, `batch` | `apex` |
+| LWC/Aura patterns | summary/description contains `lwc`, `lightning`, `aura` | `lwc` |
+| Metadata patterns | summary/description contains `field`, `object`, `layout`, `flow` | `metadata-change` |
+| Deployment patterns | summary/description contains `deploy`, `release`, `promote` | `deployment` |
+| Governance patterns | summary/description contains `pmd`, `code review`, `governor`, `audit` | `governance-scan` |
+| No match | — | No Blueprint — logged as Unclassified |
+
+---
+
+## Debugging no-ops
+
+If a Jira issue you expected to classify is showing up as Unclassified:
+
+1. Navigate to **Jira Autopilot > Unclassified**.
+2. Open the issue entry. The reason column will show one of:
+   - `No category match` — no rule or default pattern matched
+   - `Skip rule applied` — a skip rule matched; the rule name is shown
+   - `Project not monitored` — the Jira project key is not in the monitored project list
+   - `Duplicate — parent already classified` — a parent issue already generated a Blueprint
+3. Adjust the relevant routing rule or add the project to the monitored list.
+
+## Governance notes
+
+Routing rules are applied at classification time and are audited. Every rule evaluation — whether it results in a Blueprint or a no-op — is logged with:
+
+- The rule matched (or "no match")
+- The issue field values that were evaluated
+- The timestamp
+
+Routing rule changes are recorded with the admin identity and timestamp of the change. If a rule change causes unexpected Blueprint generation or suppression, the audit log allows you to correlate the rule change with the affected issues.
+
+Routing rules do not bypass the Blueprint approval gate. Even a rule that forces a specific category still produces a Blueprint that requires human approval before any execution begins.

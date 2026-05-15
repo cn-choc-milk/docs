@@ -1,0 +1,120 @@
+---
+title: "Configure Sandboxes"
+description: "Choose a sandbox provider (E2B or Blaxel), understand sandbox lifetime settings, and know what the platform manages on your behalf."
+audience: "admin"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+Sandbox configuration covers the provider choice (E2B or Blaxel), sandbox lifetime settings, and the controls available to workspace admins. Most sandbox behavior is managed by the platform — this page explains what you control versus what the platform decides.
+
+## When to use it
+
+Review this page when:
+
+- You are a workspace admin evaluating whether to enable Blaxel for multi-task parallel execution
+- You need to understand sandbox lifetime settings for quota or cost planning
+- A Run failed during sandbox allocation and you want to understand what configuration options are available
+
+## Salesforce delivery example
+
+Your team runs a Blueprint with eight tasks that can execute in parallel groups. You want to understand whether enabling Blaxel would improve throughput by allowing parallel group isolation, or whether E2B's sequential shared-sandbox model is sufficient for your current delivery volume.
+
+## Required access
+
+- Admin role in the Synapse workspace to access sandbox provider configuration
+- Delivery Lead or Admin to view sandbox settings in POD configuration
+
+---
+
+## Provider selection
+
+### E2B (default)
+
+E2B is the default provider for all Synapse workspaces. No configuration is required to use it.
+
+**Characteristics:**
+- Transient: sandbox is created at Run start and terminated at Run end
+- Shared-sandbox model: all specialists in a Run share one sandbox, working sequentially
+- Linear commit history: all specialist commits land on a single branch in sequence
+- Supported isolation strategy: `shared_sandbox`
+
+E2B is appropriate for most Salesforce delivery workspaces. Sequential execution keeps the commit history clean and the delivery trace clear.
+
+### Blaxel
+
+Blaxel is a persistent sandbox provider for workspaces that require parallel task execution.
+
+**Characteristics:**
+- Persistent: the sandbox persists between Runs for the same project
+- Resume support: a new Run can resume from the existing sandbox state rather than re-provisioning from scratch
+- Parallel isolation: supports `sandbox_per_group` and `branch_per_group` isolation strategies
+- Branch merge validation: Blaxel can validate merge correctness across parallel branches before the Run completes
+- Supported isolation strategies: `sandbox_per_group`, `branch_per_group`
+
+Blaxel is appropriate when:
+- Blueprints regularly contain parallel task groups (multiple independent specialists working concurrently)
+- You want subsequent Runs on the same project to avoid full re-provisioning overhead
+- Your delivery volume benefits from concurrent specialist execution
+
+**To enable Blaxel:** Contact your Synapse workspace admin. Blaxel provider availability is configured at the workspace level and requires the `blaxel` provider to be in your tenant's enabled providers list.
+
+### Automatic provider selection
+
+When Blaxel is enabled for your workspace and a Blueprint contains two or more tasks, Synapse may automatically select Blaxel as the provider if the Blaxel parallel default feature flag is active. In that case, you do not need to explicitly select a provider.
+
+When provider selection is enabled in your workspace, you can also override the provider explicitly in the POD configuration or at Run launch.
+
+---
+
+## Sandbox lifetime
+
+### E2B sandbox lifetime
+
+E2B sandboxes are tied to the Run. The sandbox is allocated when the Run is dispatched and is terminated when the Run reaches a terminal state (`completed`, `deploy_failed`, `failed`, or `cancelled`).
+
+Before termination, the platform commits any outstanding specialist work to the configured GitHub branch and pushes the branch to origin. If the branch push fails, it is logged as a warning and the Run continues to its terminal state.
+
+Default lifetime: the sandbox is kept alive for the duration of the Run, up to a configurable maximum. The default maximum is 60 minutes. If a Run is still active after the maximum, the sandbox is extended automatically. Long-running Runs that exceed platform limits will be flagged for review.
+
+### Blaxel sandbox lifetime
+
+Blaxel sandboxes persist between Runs for the same project. The sandbox is hibernated when a Run completes rather than terminated. A subsequent Run can resume from the hibernated state.
+
+Sandbox hibernation reduces the time spent on environment provisioning for back-to-back Runs on the same project. The trade-off is that persistent sandboxes consume storage between Runs.
+
+Blaxel sandboxes are fully terminated when the project is archived or when an admin explicitly releases them.
+
+---
+
+## What the platform controls
+
+The following are managed by Synapse and are not directly configurable by end users:
+
+- Sandbox provisioning and de-provisioning (including quota enforcement)
+- Credential injection (secrets are injected at Run start based on scoped secrets configuration — users do not interact with the sandbox directly)
+- Branch commit and push behavior (the platform commits specialist output and pushes before sandbox release)
+- Sandbox health polling (the dispatcher monitors sandbox status continuously during a Run)
+- Quota limits (the platform enforces per-tenant concurrent sandbox quotas; if quota is exhausted, new Runs are queued until capacity is available)
+
+---
+
+## Quota and capacity
+
+Each Synapse workspace has a configured concurrent sandbox quota. If all quota is consumed when a new Run is launched, the Run is queued until an existing sandbox is released.
+
+Quota exhaustion appears in the Run header as `queued — awaiting sandbox allocation`. The Run will proceed automatically when capacity is available. No manual intervention is required.
+
+Workspace admins can view current sandbox usage and quota under **Settings > Execution Environments**.
+
+---
+
+## Governance notes
+
+Sandbox configuration choices — especially the governance tier and provider selection — are recorded as part of the Run's execution context. If a compliance review requires understanding what execution environment was used for a specific Run, this information is available in the Run audit record.
+
+Provider selection does not affect governance tier enforcement. SENTINEL validation gates, approval requirements, and audit logging apply identically regardless of whether E2B or Blaxel is the active provider.

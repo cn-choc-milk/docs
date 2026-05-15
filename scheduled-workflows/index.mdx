@@ -1,0 +1,45 @@
+---
+title: "Scheduled Workflows"
+description: "Scheduled Workflows are recurring Salesforce delivery governance runs — repeating Blueprints that execute on a defined schedule with the same approval gates, quality checks, and audit trail as any other Run."
+audience: "Salesforce delivery leads, project managers, architects"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+<Note>
+  Scheduled Workflows documentation is being prepared and will be added after launch.
+</Note>
+
+## What it is
+
+Scheduled Workflows are recurring Salesforce delivery governance runs. They execute on a defined schedule — nightly, weekly, or on any custom interval — and follow the same governed lifecycle as any other Run: Blueprint approval, specialist execution in isolated Execution Nodes, Sentinel quality gates, and full audit trail.
+
+A Scheduled Workflow turns a repeating delivery pattern — a weekly org health check, a nightly metadata drift scan, a monthly compliance audit — into a structured, auditable delivery operation that runs without manual intervention. Human reviewers remain in the loop at every quality gate.
+
+## When to use it
+
+Use Scheduled Workflows for Salesforce delivery work that must happen on a predictable cadence:
+
+- **Recurring governance checks** — weekly governor limit analysis, nightly security scan, monthly permission-set audit
+- **Automated org hygiene** — scheduled metadata drift detection, unused-component flagging
+- **Capacity-based task scheduling** — assigning Blueprint tasks to the right specialists based on team availability at the time the schedule fires
+- **Dependency-driven scheduling** — auto-scheduling dependent tasks when prerequisites clear
+
+## Salesforce delivery example
+
+A Salesforce delivery team runs a nightly org health check on their production-adjacent full-copy sandbox. The Scheduled Workflow fires at midnight, triggers a Metadata Intelligence Engine analysis, runs the Governor Limit Analyzer on the ten most-changed Apex classes from the past week, and produces a Steering Report. If any Sentinel gate flags a critical finding, a Nexus approval alert notifies the on-call architect for triage.
+
+## Required access
+
+- **Synapse role:** Project Manager or higher to create and configure Scheduled Workflows
+- **Salesforce connection:** An active org connection is required for any Scheduled Workflow that includes metadata analysis or Run execution
+
+## Governance notes
+
+Scheduled Workflows execute under the same approval model as manually started Runs. A Blueprint must be approved before any scheduled execution begins. If the Blueprint changes between scheduled runs, approval is revoked and must be re-granted before the next scheduled run proceeds. Every scheduled execution produces a complete audit record.
+
+---
+
+Detailed setup, rule configuration, capacity settings, and scheduling examples are coming soon. See [Runs](/runs) for general Run lifecycle documentation.

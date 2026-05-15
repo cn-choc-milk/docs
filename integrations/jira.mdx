@@ -1,0 +1,159 @@
+---
+title: "Jira"
+description: "Connect Jira to Synapse to make Jira issues the Signal layer for governed Salesforce delivery. Jira Autopilot classifies issues and creates Blueprints."
+audience: "admin"
+flagship_path: "jira-to-run"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Tech Docs"
+---
+
+## What it is
+
+The Jira integration connects your Atlassian Jira workspace to Synapse so that Jira issues become the Signal layer for governed Salesforce delivery. Once connected, Jira Autopilot monitors incoming issues, classifies them, and creates Blueprints from them — turning the work your team already tracks in Jira into executable, governed delivery plans.
+
+## When to use it
+
+Connect Jira before you activate the Jira Autopilot path. The connection is required for:
+
+- Jira Autopilot to classify and route incoming issues
+- Salesforce-specialist leads and specialists to read issue details, acceptance criteria, and linked work items during Run execution
+- Synapse to write Blueprint status and Run outcomes back to the originating Jira issue as structured comments
+
+You can also use the Jira connection without Autopilot — Blueprints can be manually linked to Jira issues, and Run results can be posted back on demand.
+
+## Salesforce delivery example
+
+A developer creates a Jira issue: "Add validation rule to prevent duplicate Account records." The issue is assigned to the Synapse project board. Jira Autopilot classifies the issue as a metadata-change delivery task, creates a Blueprint, and assigns the Architecture Lead specialist to design the validation logic. After Blueprint approval, the Run executes the validation rule change in an Execution Node, passes Sentinel gates, and deploys to the team's Salesforce sandbox. The deployed result — including the Apex validation rule — is posted as a comment back to the original Jira issue with a link to the Run's audit trail.
+
+## Required access
+
+- **Admin or Owner** — required to complete the OAuth connection and configure Autopilot routing rules
+- **Atlassian account** — the connecting user must be a Jira admin with permission to create OAuth apps and configure webhooks
+
+## Governance notes
+
+The Jira connection uses OAuth 2.0 with the minimum required scopes. Synapse requests read access to issues, write access to issue comments and transitions, and webhook registration. It does not request admin, billing, or user management scopes. The OAuth token is stored in the credential vault as an integration-level credential, encrypted at rest. See [Credential Scopes](../secrets/scopes) for how the credential is resolved during Runs.
+
+---
+
+## Connection setup
+
+### Step 1 — Create an OAuth app in Atlassian
+
+1. Log in to your Atlassian Developer Console at [developer.atlassian.com](https://developer.atlassian.com).
+2. Click **Create app** and give it a name (for example, `Synapse Integration`).
+3. Under **Permissions**, add the following OAuth 2.0 scopes:
+
+   | Scope | Required for |
+   |---|---|
+   | `read:jira-work` | Reading issues, epics, comments, fields |
+   | `write:jira-work` | Creating and updating issue comments; transitioning issues |
+   | `offline_access` | Refresh token — required for long-lived connections |
+
+4. Under **Authorization**, set the callback URL to the value shown in Synapse under Settings → Integrations → Jira. The URL is specific to your Synapse workspace.
+5. Copy the **Client ID** and **Client Secret**.
+
+### Step 2 — Connect in Synapse
+
+1. Navigate to **Settings → Integrations → Jira**.
+2. Click **Connect Jira**.
+3. Enter your **Atlassian Cloud ID** — found at `https://your-domain.atlassian.net/_edge/tenant_info`.
+4. Enter the **Client ID** and **Client Secret** from your OAuth app.
+5. Click **Authorize**. You are redirected to Atlassian to grant the connection.
+6. After authorization, you are returned to Synapse. The connection status shows as **Active**.
+
+### Step 3 — Configure the Jira project link
+
+1. In **Settings → Integrations → Jira**, click **Link project**.
+2. Select your Synapse project and the target Jira project key.
+3. Configure sync direction: **Bidirectional** (default), **Inbound only**, or **Outbound only**.
+4. Click **Save**.
+
+### Step 4 — Configure webhook (required for Jira Autopilot)
+
+To enable real-time issue classification via Jira Autopilot, configure a webhook in Jira:
+
+1. In Jira, navigate to **Settings → System → WebHooks**.
+2. Click **Create a WebHook**.
+3. Set the URL to the webhook endpoint shown in Synapse under Settings → Integrations → Jira → Webhook setup. The URL format is: `https://<your-synapse-domain>/api/integrations/jira/webhook?project=<projectId>`.
+4. Under **Events**, enable:
+   - `jira:issue_created`
+   - `jira:issue_updated`
+   - `jira:issue_deleted`
+5. Click **Save**.
+
+When `JIRA_WEBHOOK_SECRET` is configured in the Synapse environment, webhook signature validation is enforced. Requests without a valid signature are rejected.
+
+---
+
+## What the integration reads and writes
+
+### Synapse reads from Jira
+
+- Issue summary, description, acceptance criteria, labels, and custom fields
+- Issue type, priority, and status
+- Epic and sprint associations
+- Linked issues and dependencies
+- Comments (for context during Blueprint creation)
+
+### Synapse writes to Jira
+
+- Structured comments on the originating issue with Blueprint status, Run ID, and Run outcome
+- Issue transitions — Synapse can move an issue through Jira workflow states as the Run progresses (for example, transitioning from `In Progress` to `Done` when a Run completes successfully)
+- Linked issue references when a Blueprint spawns sub-issues
+
+### What Synapse does not modify
+
+- Issue fields not explicitly mapped in your field mapping configuration
+- Issue assignee or reporter
+- Jira project settings, boards, or sprint configuration
+
+---
+
+## How it powers Jira Autopilot
+
+Jira Autopilot uses the connection to listen for new or updated issues. When an issue arrives via webhook, Autopilot:
+
+1. Reads the issue details through the integration.
+2. Classifies the issue based on configured routing rules.
+3. Creates a Blueprint from the classified issue.
+4. Assigns the Blueprint to the appropriate specialist leads for the work type.
+5. Notifies the team that a Blueprint is ready for review.
+
+See [Jira Autopilot — Routing Rules](../autopilot/routing-rules) for how to configure which issue types trigger Blueprint creation and which are excluded.
+
+---
+
+## Verifying the connection
+
+After setup, verify the connection is healthy:
+
+1. In **Settings → Integrations → Jira**, check the **Status** badge: it should read **Active**.
+2. The **Last synced** timestamp shows the most recent successful data exchange.
+3. The **Connection health** indicator runs a background health check every 30 minutes. If health degrades, the status changes to **Degraded** and an alert appears in Nexus.
+
+If the status shows **Degraded** or **Error**:
+- Check that the OAuth app in Atlassian has not had its scopes modified.
+- Verify that the Jira project key in the link configuration matches an existing project.
+- Review the webhook configuration to confirm the correct URL and events are set.
+
+---
+
+## Disconnecting
+
+To disconnect the Jira integration:
+
+1. Navigate to **Settings → Integrations → Jira**.
+2. Click **Disconnect**.
+3. Confirm in the dialog.
+
+Disconnecting removes the OAuth token from the credential vault and disables the webhook. Existing Blueprints that were created from Jira issues are not deleted. Run records that include Jira write-back events retain their audit entries. Jira Autopilot stops processing new issues immediately.
+
+---
+
+## Cross-references
+
+- [Jira Autopilot](../autopilot/index) — how Jira issues become Blueprints and then Runs
+- [Credential Scopes](../secrets/scopes) — how the Jira OAuth token is scoped in the vault
+- [Runs — Lifecycle](../runs/lifecycle) — Run status transitions that trigger Jira write-back events
