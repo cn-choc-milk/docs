@@ -1,0 +1,143 @@
+---
+title: "Auditability"
+description: "What Synapse logs for every Run, where to find the audit trail, export formats, and retention policy."
+audience: "executive"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Security and Governance"
+---
+
+## What it is
+
+Auditability is the guarantee that every decision made during a Run — what was planned, who approved it, what each specialist did, which validations passed or failed, and what was deployed — is written to an immutable record and is available for review, search, and export. The audit trail is not a feature you configure; it is always on for every Run at every governance tier.
+
+## When to use it
+
+Consult the audit trail when:
+
+- A Run completed with unexpected results and you need to reconstruct what happened.
+- A compliance review or security audit requires documentation of who approved a Salesforce deployment.
+- A Sentinel gate blocked a Run and you need to understand which findings triggered the block.
+- A credential was accessed during a Run and you need to verify which task used it.
+- You need to export delivery history for a specific project for governance reporting.
+
+## Salesforce delivery example
+
+A production deployment Run completed with `deploy_failed` status on one task. The team lead opens the Run in Nexus, navigates to the audit trail, and filters by the failed task. The trail shows the full sequence: Blueprint approval (by which admin, at what time), Sentinel gate results for that task (all seven core gates passed), the per-task approval (who approved), the deployment attempt (the Salesforce error returned by the Metadata API), and the resulting status update. The team lead exports the record as CSV for the incident report.
+
+## Required access
+
+- **Owner, Admin, Member** — can view the audit trail for Runs within their tenant
+- **Owner, Admin** — can export audit records
+- **Viewer** — can view Run summaries but does not have full audit trail access
+
+## Governance notes
+
+Audit records are write-once. Application-layer operations cannot modify or delete audit entries. The records are stored in Supabase with RLS policies that enforce tenant isolation — no user or service principal can query audit records belonging to another tenant.
+
+---
+
+## What is logged
+
+### Blueprint events
+
+| Event | Fields logged |
+|---|---|
+| Blueprint created | `tenant_id`, `blueprint_id`, `created_by`, `timestamp` |
+| Blueprint submitted for approval | `tenant_id`, `blueprint_id`, `submitted_by`, `timestamp` |
+| Blueprint approved | `tenant_id`, `blueprint_id`, `approved_by`, `approver_role`, `timestamp` |
+| Blueprint rejected | `tenant_id`, `blueprint_id`, `rejected_by`, `rejection_reason`, `timestamp` |
+
+### Run events
+
+| Event | Fields logged |
+|---|---|
+| Run launched | `tenant_id`, `run_id`, `blueprint_id`, `launched_by`, `governance_tier`, `target_environment`, `timestamp` |
+| Run launch approved (Standard/Strict) | `tenant_id`, `run_id`, `approved_by`, `timestamp` |
+| Task dispatched | `tenant_id`, `run_id`, `task_id`, `specialist`, `governance_tier`, `timestamp` |
+| Task approved (Strict tier) | `tenant_id`, `run_id`, `task_id`, `approved_by`, `timestamp` |
+| Credential read (application log) | `service`, `run_id`, `redacted_value` — recorded in the application log; durable audit-trail capture for credential reads is on the post-launch roadmap |
+| Sentinel gate result | `tenant_id`, `run_id`, `task_id`, `gate_code`, `gate_status` (pass/advisory/blocking), `finding_count`, `timestamp` |
+| Task completed | `tenant_id`, `run_id`, `task_id`, `status`, `duration_ms`, `timestamp` |
+| Deployment attempted | `tenant_id`, `run_id`, `task_id`, `target_org`, `deployment_status`, `timestamp` |
+| Deployment succeeded | `tenant_id`, `run_id`, `task_id`, `components_deployed`, `timestamp` |
+| Deployment failed | `tenant_id`, `run_id`, `task_id`, `error_code`, `error_message`, `timestamp` |
+| Run completed | `tenant_id`, `run_id`, `final_status`, `total_duration_ms`, `timestamp` |
+| Run failed | `tenant_id`, `run_id`, `failure_reason`, `last_successful_task`, `timestamp` |
+| Run cancelled | `tenant_id`, `run_id`, `cancelled_by`, `reason`, `timestamp` |
+
+### Approval events
+
+All approval and rejection events record the identity of the approving user (`user_id`, not just username), the role at time of approval, and the UTC timestamp. Approval records are immutable — once an approval is recorded, it cannot be edited, backdated, or removed.
+
+---
+
+## Where to find the audit trail
+
+### In Nexus — Run detail view
+
+Open any Run from the Runs list. The **Audit Trail** tab shows a chronological event log for that Run. You can:
+
+- Filter by event type (approvals, Sentinel gates, deployments, failures)
+- Search by task ID or specialist name
+- Expand any event row to see the full event payload
+
+### In Nexus — Approvals history
+
+The **Approvals** section in Nexus shows a tenant-wide view of all approval events across all Runs. Filter by date range, approver, Blueprint, or governance tier.
+
+### Via export
+
+Admins can export audit records via the audit export API (`/api/v2/audit-exports`). Supported output formats include JSON, CSV, CEF, LEEF, Syslog, and Splunk HEC, with delivery to email, S3, or webhook destinations. The in-app Audit Logs export UI is being prepared and will be added shortly after launch.
+
+<Note>
+  The Settings → Audit Logs export UI is being prepared and will be added after launch.
+</Note>
+
+---
+
+## Export formats
+
+Synapse supports the following export formats for audit log delivery:
+
+| Format | Use case |
+|---|---|
+| **JSON** | Programmatic processing, custom dashboards |
+| **CSV** | Spreadsheet analysis, incident reports |
+| **CEF** | ArcSight and CEF-compatible SIEM ingestion |
+| **LEEF** | IBM QRadar ingestion |
+| **Syslog** | Syslog-based log aggregators |
+| **Splunk** | Splunk HTTP Event Collector (HEC) format |
+
+Exports can be delivered to:
+- **Email** — sent to a configured address on completion
+- **S3** — delivered to a configured bucket with tenant-scoped prefix
+- **Webhook** — posted to a configured endpoint
+
+Scheduled exports (daily, weekly, monthly) are supported via the API. The in-app scheduling UI will be available after launch.
+
+---
+
+## Execution session export
+
+Individual Run session data can be exported in two formats directly from the Run detail view:
+
+- **CSV export** — all events for the session in tabular format
+- **PDF export** — a formatted delivery report suitable for governance sign-off documentation
+
+Bulk export is available from **Settings → Audit Logs** for all execution events across a date range.
+
+---
+
+## Retention
+
+Audit records are retained indefinitely within the Synapse platform. There is no automatic deletion of audit logs based on age. If your organization has a defined retention policy, export and archive logs according to your schedule using the export feature.
+
+---
+
+## Cross-references
+
+- **Run states and lifecycle**: [Runs — Lifecycle](../runs/lifecycle) — maps Run status codes to what they mean for audit completeness
+- **Approval gate details**: [Approval Gates](./approval-gates) — which approval events are generated at each gate
+- **Sandbox execution logs**: [Sandboxes — Isolation and Logs](../sandboxes/isolation-and-logs) — execution-level logs inside the Run environment complement the audit trail

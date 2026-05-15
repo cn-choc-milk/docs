@@ -1,0 +1,218 @@
+---
+title: "Approval Gates"
+description: "Where approval gates fire in the Blueprint and Run lifecycle, who can approve, and how the Sentinel validation pipeline works at each governance tier."
+audience: "architect"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Security and Governance"
+---
+
+## What it is
+
+Approval gates are the points in the Blueprint and Run lifecycle where Synapse requires a human decision before execution continues. Gates are not optional checks — at Standard and Strict tiers, they are hard stops. Without approval, the Run does not advance.
+
+## When to use it
+
+Gates are always present. What changes across governance tiers is the strictness of enforcement and the number of approval checkpoints. Use the Strict tier when targeting production Salesforce environments — Strict maps to the `production` runtime enforcement profile, which sets `requireApproval = true` and blocks Sentinel gate failures. Use Standard for staging (Standard maps to the `staging` profile: blocking Sentinel gates, no per-task approval). Development and Accelerated tiers are appropriate for sandbox work where speed matters more than gate density.
+
+## Salesforce delivery example
+
+An approved Blueprint targets a Salesforce staging org for a custom object schema change. The Run launches at Standard tier. Before the Build Specialist's output is deployed, the Sentinel pipeline runs all seven core gates. The PMD gate returns two medium-severity findings. At Standard tier, these are blocking — the specialist cannot proceed until the findings are resolved. The Architecture Lead reviews the PMD output in Nexus, the specialist remedies the issues, and the pipeline re-runs. With all gates clear, the deployment task appears in Nexus for human approval. The Admin reviews the metadata diff and approves. The deployment proceeds and the result is recorded in the audit trail.
+
+## Required access
+
+| Action | Roles permitted |
+|---|---|
+| Approve a Blueprint | Admin, Owner |
+| Approve a Run launch (Standard/Strict) | Admin, Owner |
+| Approve a task during per-task gate (Strict) | Admin, Owner |
+| Review Sentinel gate results | Admin, Owner, Member |
+| Configure governance tier for a Run | Admin, Owner |
+
+## Governance notes
+
+Approval events are immutable once recorded. An approval cannot be revoked after the associated task has begun execution. If a task has been approved in error, the correct action is to cancel the Run — which halts execution at the next task boundary — rather than attempting to withdraw the approval record.
+
+---
+
+## Gate map: where gates fire
+
+### Gate 1 — Blueprint approval
+
+**Fires:** Before any Run can be launched from a Blueprint.
+
+A Blueprint must be explicitly approved by an Admin or Owner before it becomes executable. This gate ensures that the delivery plan — tasks, dependencies, specialist assignments, and target environment — has been reviewed by a human who is accountable for the work it describes.
+
+Until a Blueprint is approved:
+- No Run can be launched from it
+- The Blueprint is in `draft` or `pending_approval` state
+- Specialists cannot be dispatched
+
+Blueprint approval is required at every governance tier.
+
+### Gate 2 — Run launch approval (Standard and Strict tiers)
+
+**Fires:** When a user requests to launch a Run from an approved Blueprint at Standard or Strict tier.
+
+At these tiers, launching a Run requires a separate approval from an Admin or Owner who confirms the Run should proceed against the specified target environment. This gate exists because an approved Blueprint describes intended work — the Run launch approval confirms that the timing and target are also correct.
+
+At Exploration, Development, and Accelerated tiers, approved Blueprints can be launched without a separate approval step.
+
+### Gate 3 — Per-task approval (Strict tier only)
+
+**Fires:** Before each specialist task is dispatched at Strict tier.
+
+Strict tier maps to the `production` runtime enforcement profile, where `requireApproval = true`. Every individual task in a Run requires approval before it begins. This is the maximum control posture, designed for production deployments where each change must be individually authorized. Standard tier does not require per-task approval — it enforces blocking Sentinel gates but dispatches tasks without per-task approval steps.
+
+The approver sees the task definition, the specialist assigned, the credentials the task will use, and the dependency state before approving.
+
+### Gate 4 — Sentinel pipeline
+
+**Fires:** During Run execution, after a specialist completes a task but before the output is deployed to Salesforce.
+
+The Sentinel pipeline is a series of validation gates that check the specialist's output before it touches a Salesforce org. Sentinel gates can be **advisory** (findings are reported but execution continues) or **blocking** (execution stops until findings are resolved), depending on the governance tier.
+
+See [Sentinel pipeline](#sentinel-pipeline) below for gate-by-gate detail.
+
+---
+
+## Sentinel pipeline
+
+The Sentinel pipeline runs after a Build or Architecture specialist produces changes. It evaluates the output across up to nine gates before any Salesforce deployment is attempted.
+
+### Core gates (always run)
+
+| Gate | Code | What it checks |
+|---|---|---|
+| **1 — Syntax** | `SENTINEL_010` | Apex and metadata file syntax validity |
+| **2 — PMD** | `SENTINEL_011` | Apex PMD static analysis findings |
+| **3 — ESLint** | `SENTINEL_012` | JavaScript/LWC lint violations |
+| **4 — Apex compilation** | Compilation gate | Apex compiles without errors against the target org's schema |
+| **5 — Test execution** | `SENTINEL_014` | Required test suites pass at the tier's test level |
+| **6 — Coverage** | `SENTINEL_016` | Code coverage meets the threshold required by the tier |
+| **7 — Governor limits** | Governor gate | Aggregate governor limit analysis — SOQL, DML, CPU, Queueable — within the tier's budget |
+
+### Optional gates (configurable)
+
+| Gate | Code | What it checks |
+|---|---|---|
+| **8 — CodeScan SAST** | `SENTINEL_017` | Security-focused static analysis (configured per tenant) |
+| **9 — Custom rules** | Custom engine | Org-specific coding standards defined in org standards configuration |
+
+### Enforcement by tier
+
+The five UI labels map to three runtime enforcement profiles. Per-task approval (`requireApproval = true`) is only active under the `production` profile.
+
+| UI tier label | Runtime profile | Sentinel enforcement | Blocking on failure | Per-task approval |
+|---|---|---|---|---|
+| Exploration | `development` | Advisory | No | No |
+| Development | `development` | Advisory | No | No |
+| Accelerated | `staging` | Advisory | No | No |
+| Standard | `staging` | **Blocking** | Yes — execution halts; specialist must remediate | No |
+| Strict | `production` | **Blocking** | Yes — execution halts; specialist must remediate | **Yes** |
+
+When Sentinel blocks execution, the Run enters a `blocked_by_sentinel` state. The specialist receives the gate findings as structured feedback. The specialist may remediate and the pipeline re-runs. A human reviewer can review gate output in Nexus at any point.
+
+### Viewing Sentinel gate status
+
+Gate status for every task appears in:
+
+- **Nexus Run detail** — the gate pipeline visualization shows pass/advisory/blocking status for each gate in sequence
+- **Run audit trail** — each gate result is logged as a Run event with the gate code, severity, and finding summary
+- **Blueprint task status** — tasks blocked by Sentinel show a `blocked_by_sentinel` badge
+
+### Auto-fix workflow
+
+1. When Sentinel finds issues, click **Auto-Fix** on any finding.
+2. CURATOR analyzes the finding and generates a fix.
+3. The fix is validated through Sentinel again (up to three attempts).
+4. If auto-fix succeeds, the fixed code replaces the original.
+5. If auto-fix fails after three attempts, the finding requires manual intervention.
+
+### Manual Sentinel runs
+
+Sentinel can be run on-demand against any file, directory, or entire project: **Tools > Run Sentinel Analysis**. Do not disable Gates 1–6 — they catch issues that will cause deployment failures.
+
+---
+
+## Approval flow in Nexus
+
+When a gate requires human approval — Blueprint approval, Run launch, or per-task — the approval request appears in **Nexus** under the **Approvals** queue.
+
+The approver sees:
+
+- The Blueprint or task description
+- The governance tier and target environment
+- Any Sentinel gate results relevant to the approval decision
+- The specialist assigned and the credentials the task will access
+- The full change set (for deployment approvals)
+
+Approving or rejecting is a one-click action in Nexus. Both outcomes are recorded in the audit trail with the approver's identity and timestamp.
+
+See [Auditability](./auditability) for what is logged for each approval event and how to search approval history.
+
+---
+
+## RAID Log
+
+The RAID Log is a centralized tracker for Risks, Assumptions, Issues, and Dependencies — the four factors that commonly affect Salesforce delivery engagements. Every entry has an owner, impact score, likelihood score, and mitigation strategy. RAID data feeds automatically into Steering Reports and the Nexus risk dashboard.
+
+| Type | Definition |
+|---|---|
+| **Risk** | Something that might go wrong (probability under 100%) |
+| **Assumption** | Something assumed to be true that needs validation |
+| **Issue** | A problem that is currently happening (probability is 100%) |
+| **Dependency** | A reliance on an external factor — team, vendor, or milestone |
+
+### Creating a RAID entry
+
+1. Click **RAID Log** in the sidebar, or from any project page click the **RAID** tab.
+2. Click **Add RAID Item**.
+3. Select type (Risk, Assumption, Issue, Dependency).
+4. Fill in title, description, owner, impact (1–5), likelihood (1–5), and mitigation strategy.
+5. Click **Save**.
+
+Risk Score = Impact × Likelihood (auto-calculated): 1–5 Low, 6–12 Medium, 13–25 High.
+
+### Linking RAID items to Blueprint tasks
+
+Open any RAID item detail, scroll to **Related Tasks**, click **Link Task**, and search for the mitigation Blueprint task. This ties risk mitigation work directly to the governed delivery plan.
+
+---
+
+## External Review
+
+External Review is a stakeholder approval workflow for Blueprints, Run outputs, and project artifacts. It creates shareable links that allow external stakeholders — who do not need Synapse accounts — to review deliverables, leave comments, and approve or reject submissions. All activity is tracked and auditable.
+
+### Sending a deliverable for review
+
+1. Navigate to the Blueprint, document, or Run artifact you want reviewed.
+2. Click **Share > Send for External Review**.
+3. Add reviewer email addresses. For each reviewer, choose a role:
+   - **Approver** — can approve or reject (required for final sign-off)
+   - **Reviewer** — can comment but not approve or reject
+   - **Observer** — read-only access
+4. Set link expiration (7 days, 30 days, or custom).
+5. Write a cover message explaining what feedback is needed and the turnaround deadline.
+6. Click **Send Review Request**.
+
+### Reviewer experience
+
+Reviewers receive an email with a link. They do not need a Synapse account. The review page shows the Blueprint or artifact content, a comment sidebar, and Approve/Reject buttons for Approvers.
+
+### Tracking review status
+
+Navigate to **External Review** to see all active review requests. Status options: Pending, In Progress, Approved, Rejected, Changes Requested.
+
+### Audit trail
+
+Every reviewer action — view, comment, approve, reject — is logged with user identity, timestamp, and decision. Approval records are archived when the review is closed and remain available for compliance documentation.
+
+---
+
+## Cross-references
+
+- **Run state transitions**: see [Runs — Lifecycle](../runs/lifecycle) for how gate states (`blocked_by_sentinel`, `pending_approval`) map to the overall Run lifecycle.
+- **Sandbox isolation**: approval gates protect Salesforce environments; execution sandboxes protect the infrastructure. See [Sandboxes — Isolation and Logs](../sandboxes/isolation-and-logs).
+- **Credential access during gated execution**: see [Credential Scopes](../secrets/scopes) for how credentials are resolved per task.

@@ -1,0 +1,117 @@
+---
+title: "Security and Governance"
+description: "Synapse's security model: approval gates, tenant isolation, least privilege, audit trails, and production safeguards for every Run."
+audience: "executive"
+flagship_path: "both"
+coming_soon: false
+last_reviewed: "2026-05-15"
+owner_role: "Security and Governance"
+---
+
+## What it is
+
+Security and governance is how Synapse makes every delivery decision visible, reviewable, and reversible. The model is built on five pillars: approval gates that require human sign-off before work advances, tenant isolation that prevents one workspace from ever seeing another's data, least-privilege credential access that limits each specialist to exactly what a task needs, a full audit trail that records every decision and action, and production safeguards that block unsanctioned changes to live Salesforce environments.
+
+## When to use it
+
+This model is always active. There is no mode in Synapse where governance is switched off. The governance tier you select (Exploration, Development, Accelerated, Standard, or Strict) adjusts where humans are required to approve and how comprehensively Sentinel validates work — but isolation, audit trails, and scoped secrets are present at every tier. The five UI labels map to three runtime enforcement profiles: `development` (Exploration and Development), `staging` (Accelerated and Standard), and `production` (Strict). See [Approval Gates](./approval-gates) for the enforcement-by-tier table.
+
+## Salesforce delivery example
+
+A Blueprint is approved for execution targeting a Salesforce staging sandbox. The assigned Build Specialist generates the metadata change set and the Architecture Lead reviews the dependency impact. Before the change is deployed, the Sentinel validation pipeline runs seven mandatory gates: syntax checking, PMD static analysis, ESLint, Apex compilation, test coverage, test execution, and governor limit analysis. At Standard tier (which maps to the `staging` enforcement profile), Sentinel failures are blocking — the specialist cannot proceed until findings are resolved. A human reviewer approves the final deployment in Nexus. Every step is written to the Run's audit trail, including which gates passed, which required remediation, and who approved deployment.
+
+## Required access
+
+All authenticated users in a Synapse tenant participate in the governance model. Role-specific actions:
+
+- **Owner and Admin** — configure governance tiers, manage approval delegations, export audit logs
+- **Member** — submit Blueprints for approval, approve gated actions within their authorization scope
+- **Viewer** — review audit logs and Run records; cannot approve or configure
+
+## Governance notes
+
+Governance is not an add-on. Every Blueprint Run passes through the same validation and approval infrastructure regardless of whether it touches production. The difference between tiers is the strictness of enforcement, not the presence of controls.
+
+---
+
+## Pillar 1: Approval gates
+
+Synapse requires human approval at defined points before work proceeds. Approval gates prevent execution from advancing on the basis of specialist judgment alone.
+
+Gates fire at three points:
+
+1. **Blueprint approval** — a Blueprint must be reviewed and approved before any Run can be launched from it.
+2. **Run launch** — at Standard and Strict tiers (both map to blocking enforcement profiles), launching a Run against a non-development target requires explicit approval from an Admin or Owner.
+3. **Task-level gates (Strict tier only)** — every task dispatched to a specialist requires per-task human approval before execution begins. Strict maps to the `production` runtime enforcement profile, where `requireApproval = true`. Standard maps to the `staging` profile, which enforces blocking Sentinel gates but does not require per-task approval.
+
+See [Approval Gates](./approval-gates) for the complete gate map, RBAC matrix, and Sentinel pipeline details.
+
+---
+
+## Pillar 2: Tenant isolation
+
+Every object in Synapse — projects, Blueprints, Runs, credentials, audit logs, conversation history — belongs to exactly one tenant. Tenant isolation is enforced by two layers: PostgreSQL Row Level Security policies on user-scoped queries, and application-layer `tenant_id` filters on every service-role query through the API server. Both layers are required, and both are exercised on every request.
+
+The service principal used by the Mastra execution layer (`service_mastra`) operates with a narrow permission set: it can invoke agent actions, read RAG context, and write execution events for its own tenant. It cannot read credentials, list users, or modify tenant settings.
+
+There is no shared database state between tenants. Even platform-default configuration is resolved tenant-by-tenant; if one tenant's configuration is misconfigured, it has no effect on other tenants.
+
+---
+
+## Pillar 3: Least privilege
+
+Credentials are scoped to the narrowest possible context. A Salesforce credential stored for Project A cannot be accessed by a Run in Project B. A specialist executing a task receives only the credentials that task explicitly requires; it does not receive a full dump of the tenant's credential vault.
+
+Specialists themselves are given minimal tool access depending on the governance tier. At higher tiers (Standard, Strict), the specialist's tool call budget is lower and the tools available for deployment-class actions are locked behind Sentinel gate completion.
+
+See [Credential Scopes](../secrets/scopes) for the full scope resolution model.
+
+---
+
+## Pillar 4: Audit trail
+
+Every Run produces a complete, immutable audit trail. The audit trail records:
+
+- Every Blueprint approval event (who approved, when, from which IP)
+- Every task dispatched to a specialist (which specialist, which tier, which credentials were accessed)
+- Every Sentinel gate result (pass, advisory, or blocking failure)
+- Every human approval within Nexus (approver, action, timestamp)
+- Every deployment outcome (success, failure, partial success with `deploy_failed` status)
+- Every failure and the failure reason
+
+Audit records are written as the Run progresses. They cannot be modified or deleted through the application. The audit trail is searchable from the Run detail view in Nexus and can be exported in JSON, CSV, CEF, LEEF, Syslog, and Splunk-compatible formats.
+
+See [Auditability](./auditability) for search, export, and retention details.
+
+---
+
+## Pillar 5: Production safeguards
+
+Synapse's production safeguards address the question enterprise buyers ask most: "Can specialists make changes to our production Salesforce environment without approval?"
+
+The answer is no, by design:
+
+- **Tier-gated production access**: deploying to a production org requires the `strict` governance tier (`strict` is the buyer-facing UI label for the runtime `production` enforcement profile — see [Approval Gates](./approval-gates) for the full tier-to-enforcement map). At this tier, every task requires human approval before dispatch, Sentinel enforcement is blocking, all org tests must pass, and the specialist's tool budget is at its minimum.
+- **Execution sandboxes**: all Run execution happens inside isolated execution sandboxes provided by E2B (transient, default) or Blaxel (persistent). The sandbox receives exactly the credentials scoped to its Run. Production Salesforce endpoints are unreachable from a Run that was not configured with a production credential.
+- **No prompt injection of credentials**: credentials are never passed through specialist prompts. They are injected server-side at task execution time. This means a compromised or hallucinating specialist cannot manufacture or exfiltrate a credential by reading it from its context window.
+- **Deployment requires CLI auth URL**: Salesforce deployments require a valid CLI auth URL credential stored in the vault. There is no way to deploy to a Salesforce org from Synapse without a pre-stored, admin-authorized credential for that org.
+
+These safeguards address the risk that sandboxes could be used as a vector for unauthorized production changes. See [Sandboxes — Isolation and Logs](../sandboxes/isolation-and-logs) for execution environment detail.
+
+---
+
+## Governance tier summary
+
+The five UI tier labels map to three runtime enforcement profiles in the API server. Unknown or unrecognised tier names fall back to the `development` profile.
+
+| UI tier label | Runtime enforcement profile | Sentinel enforcement | Test requirement | Human approval |
+|---|---|---|---|---|
+| **Exploration** | `development` | Advisory | None | Blueprint approval only |
+| **Development** | `development` | Advisory | Specified tests | Blueprint approval only |
+| **Accelerated** | `staging` | Advisory | Targeted local tests | Blueprint approval only |
+| **Standard** | `staging` | Blocking | All local tests | Blueprint approval + Run launch |
+| **Strict** | `production` | Blocking | All org tests | Blueprint approval + Run launch + per-task |
+
+Only the `production` profile sets `requireApproval = true` (per-task approval). The `staging` profile enforces blocking Sentinel gates but does not require per-task approval. The `development` profile has no blocking gates and no approval requirements beyond Blueprint approval.
+
+See [Approval Gates](./approval-gates) for what each tier enforces in practice.
