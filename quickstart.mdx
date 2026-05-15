@@ -1,9 +1,9 @@
 ---
 title: "Getting started: connect your org and build with Synapse"
-description: "Sign up for Synapse, connect your Salesforce org, create a project, and generate your first AI-powered action plan in under ten minutes."
+description: "Sign up for Synapse, connect your Salesforce org, create a project, and complete your first governed Blueprint Run in under ten minutes."
 ---
 
-Synapse is an AI-powered platform that turns natural language descriptions into production-ready Salesforce components and orchestrated action plans. This guide walks you through everything from creating your account to generating your first component — no prior setup required.
+Synapse is the Salesforce delivery operating system. Describe a change in plain language, compose a Blueprint, get it approved, and execute a governed Run — all with a full audit trail. This guide walks you through everything from creating your account to completing your first Blueprint Run — no prior setup required.
 
 ## Sign up
 
@@ -52,13 +52,13 @@ Projects are the workspaces where your agents run, code is generated, and result
     Give your project a descriptive name, select the Salesforce org you just connected, and optionally link a GitHub repository. Synapse pushes generated code to a feature branch in that repository.
   </Step>
   <Step title="Save the project">
-    Click **Create Project**. You'll land on the project dashboard, where your agents and action plans will appear.
+    Click **Create Project**. You'll land on the project dashboard, where your specialists and Blueprints will appear.
   </Step>
 </Steps>
 
-## Your first action plan
+## Your first Blueprint
 
-An action plan is an AI-orchestrated sequence of agent tasks. You describe what you want to build in natural language, Synapse generates a step-by-step plan, and you execute it with one click.
+A Blueprint is a governed delivery plan — a sequence of specialist tasks with approval gates. You describe what you want to build in natural language, Synapse composes a step-by-step Blueprint, and you execute it with one click.
 
 <Steps>
   <Step title="Open the AI Builder">
@@ -79,11 +79,11 @@ An action plan is an AI-orchestrated sequence of agent tasks. You describe what 
       Good prompts include the component type (LWC, Apex class, Flow), specific fields or objects involved, and any business logic rules. Vague prompts like "create a form" produce generic output.
     </Note>
   </Step>
-  <Step title="Generate the action plan">
-    Press **Ctrl+Enter** (or **Cmd+Enter** on Mac) to submit your prompt. Synapse analyzes your org's metadata and generates a multi-step action plan showing exactly what each agent will do.
+  <Step title="Generate the Blueprint">
+    Press **Ctrl+Enter** (or **Cmd+Enter** on Mac) to submit your prompt. Synapse analyzes your org's metadata and generates a multi-step Blueprint showing exactly what each specialist will do.
   </Step>
   <Step title="Review and execute">
-    Review the proposed plan. If everything looks right, click **Execute**. Agents run in sequence, and you can follow their progress in real time. When they finish, Synapse pushes the generated files to a Git branch for your review.
+    Review the proposed Blueprint. If everything looks right, click **Execute**. Specialists run in sequence, and you can follow their progress in real time. When they finish, Synapse pushes the generated files to a Git branch for your review.
   </Step>
   <Step title="Download or deploy your component">
     Once generated, you can:
@@ -120,14 +120,14 @@ The health endpoint requires no authentication, so it's a safe first call to mak
 
 ## Next steps
 
-You've connected your org, created a project, and run your first action plan. Here's where to go next:
+You've connected your org, created a project, and completed your first Blueprint Run. Here's where to go next:
 
 <CardGroup cols={2}>
   <Card title="AI agents" icon="robot" href="/features/ai-agents">
-    Learn about AXIOM, FORGE, SYNTH, and the other specialized agents that power your action plans.
+    Learn about AXIOM, FORGE, SYNTH, and the other Salesforce-specialist leads and specialists that power your Blueprints.
   </Card>
-  <Card title="Action plans" icon="list-check" href="/features/action-plans">
-    Understand how multi-agent orchestration works and how to customize plan execution.
+  <Card title="Blueprints" icon="list-check" href="/features/blueprints">
+    Understand how governed delivery plans work and how to customize Blueprint execution.
   </Card>
   <Card title="Metadata intelligence" icon="magnifying-glass" href="/features/metadata-intelligence">
     Explore how Synapse builds a dependency graph from your org's metadata.

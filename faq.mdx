@@ -34,7 +34,7 @@ If you are evaluating Synapse or just getting started, this page covers the ques
 
   <Accordion title="How is data isolated between tenants?">
 
-    Every Synapse workspace operates in its own isolated tenant. Your Salesforce metadata, action plans, agent outputs, and configuration are stored under a unique tenant ID, and all database queries are scoped to that ID using row-level security (RLS) policies enforced at the database layer.
+    Every Synapse workspace operates in its own isolated tenant. Your Salesforce metadata, Blueprints, specialist outputs, and configuration are stored under a unique tenant ID, and all database queries are scoped to that ID using row-level security (RLS) policies enforced at the database layer.
 
     Synapse agents run in ephemeral, per-execution sandbox environments. Each execution gets a fresh, isolated environment that is destroyed after the run completes — no data from one execution persists into another, and no data crosses tenant boundaries.
 
@@ -93,13 +93,13 @@ If you are evaluating Synapse or just getting started, this page covers the ques
 
     If a reviewer requests changes or your CI pipeline fails, you have two options:
 
-    - **Iterate with the agent**: Add a new task to the action plan describing the requested changes, run it, and the agent commits additional changes to the same branch.
+    - **Iterate with the specialist**: Add a new task to the Blueprint describing the requested changes, run it, and the specialist commits additional changes to the same branch.
     - **Edit manually**: Check out the branch, make your changes locally, and push. Synapse tracks the branch by run ID, so manually pushing additional commits does not break anything.
 
-    If a PR is closed without merging, Synapse marks the corresponding execution node as **Cancelled** in the action plan. You can re-run the task at any time to generate a fresh branch and PR.
+    If a PR is closed without merging, Synapse marks the corresponding execution node as **Cancelled** in the Blueprint. You can re-run the task at any time to generate a fresh branch and PR.
 
     <Note>
-      Approvals are final in Synapse's action plan system — you cannot un-approve an already-approved node. If you need to revert an approval decision, reject the downstream task instead and re-run the relevant steps.
+      Approvals are final in Synapse's Blueprint system — you cannot un-approve an already-approved node. If you need to revert an approval decision, reject the downstream task instead and re-run the relevant steps.
     </Note>
 
   </Accordion>
@@ -123,7 +123,7 @@ If you are evaluating Synapse or just getting started, this page covers the ques
 
   <Accordion title="How do I cancel or pause a running execution?">
 
-    You can pause or stop a running action plan from the execution controls panel in the top-right corner of Execution Mode.
+    You can pause or stop a running Blueprint Run from the execution controls panel in the top-right corner of Execution Mode.
 
     **To pause**: Click **Pause**. Any task nodes currently in progress will finish their current step before pausing — no partial work is lost. The plan status changes to **Paused**, and you can resume by clicking **Execute** at any time.
 

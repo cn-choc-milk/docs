@@ -1,0 +1,113 @@
+---
+title: "Compose governed Salesforce delivery plans with Blueprints"
+description: "Design Salesforce delivery plans on a visual canvas, with specialist assignment, human approval gates, Jira sync, and live execution tracking."
+---
+
+Blueprints give you a visual way to design, assign, and run governed delivery plans. You build your Blueprint on a canvas—connecting objectives, epics, user stories, tasks, and approval steps—then switch to Execution mode to watch specialists work through it in real time. The same Blueprint can be paused, resumed, or handed off to a reviewer at any stage.
+
+## Planning vs. execution modes
+
+Blueprints has two distinct modes so that design and runtime concerns stay separate.
+
+<Tabs>
+  <Tab title="Planning mode">
+    Planning mode is where you design your delivery plan. The interface has three sections:
+
+    - **Saved Blueprints panel** (left): Browse, search, and manage your saved Blueprints.
+    - **Canvas** (center): A drag-and-drop surface where you create nodes and connect them with dependency arrows.
+    - **Properties panel** (right): Configure the selected node—its title, description, specialist assignment, priority, and approval settings.
+
+    In Planning mode you can create and connect nodes, assign specialists, set priorities, configure approval gates, and validate the Blueprint before handing it off to execution. No specialists run while you are in this mode.
+  </Tab>
+  <Tab title="Execution mode">
+    Execution mode is where the Blueprint runs. The canvas shifts focus to monitoring: each node shows its live status (gray for not started, blue with a spinner for in progress, green for complete, red for blocked or failed).
+
+    The right panel shows execution controls—**Execute**, **Pause**, and **Reset**—along with a progress bar and task counter. The left panel surfaces per-node details: which specialist is running, what it has logged so far, and how long it has been active.
+
+    You can pause execution at any time. Completed nodes retain their status; in-progress nodes finish before the pause takes effect.
+  </Tab>
+</Tabs>
+
+## Canvas basics
+
+The canvas supports several node types, which map directly to levels in a standard project hierarchy:
+
+| Node type | Purpose | Jira equivalent |
+|-----------|---------|-----------------|
+| **Objective** | High-level goal | Epic |
+| **Epic** | Large feature set | Epic/Initiative |
+| **User story** | User-centric feature | Story |
+| **Task** | Specific implementation work | Task/Subtask |
+| **Approval step** | Human sign-off gate | — |
+
+Connections between nodes represent dependencies: a source node must complete before its target can start. Drag from the output handle on the right side of a node and drop it onto the input handle on the left side of the next node. A red line means the connection would create a circular dependency and cannot be saved.
+
+## Create your first Blueprint
+
+<Steps>
+  <Step title="Navigate to Blueprints">
+    Click **Blueprints** in the left navigation. You land in Planning mode by default.
+  </Step>
+  <Step title="Create a new Blueprint">
+    Click **+ New Blueprint**, enter a name and an optional description, then click **Create**. The canvas opens empty and ready for nodes.
+  </Step>
+  <Step title="Add your first node">
+    Click anywhere on the canvas. A node creation dialog appears. Select a node type, enter a title and description, then click **Save**. Your node appears on the canvas.
+  </Step>
+  <Step title="Connect nodes">
+    Hover over a node until the output handle appears on its right edge. Drag from that handle to the input handle on the left edge of a dependent node. The arrow that appears represents the dependency relationship.
+  </Step>
+  <Step title="Assign specialists to task nodes">
+    Click a task node to open the properties panel. Under **Specialist Assignment**, review the suggested specialists and their match scores, then click one to assign it. Every task node must have an assigned specialist before execution can begin.
+  </Step>
+  <Step title="Add approval steps where needed">
+    Drag an **Approval Step** node from the node palette and connect it after any task that requires human sign-off. Open the node properties to set the approver list and any instructions the reviewer should see.
+  </Step>
+  <Step title="Validate and start execution">
+    Click **Validate Blueprint** in the top-right corner. The validator checks for missing titles, unassigned tasks, and circular dependencies. Fix any errors it flags, then click **Start Execution** to switch to Execution mode and confirm the transition.
+  </Step>
+</Steps>
+
+## Specialist assignment and match scores
+
+When you select a task node, the **Specialist Assignment** panel shows a ranked list of specialists alongside their **match scores**. The score reflects how well a specialist's capabilities align with the task's title and description—higher is better. Click the specialist you want to assign; the panel shows the reasoning behind the score so you can evaluate the recommendation.
+
+<Tip>
+  If you're not sure which specialist to pick, start with the top-ranked suggestion. You can always reassign before execution starts by returning to Planning mode.
+</Tip>
+
+## Approval workflows
+
+Approval steps pause execution and wait for a named reviewer to either approve or reject before the Blueprint continues. This gives you human-in-the-loop control over sensitive phases—security reviews, production deployments, architectural decisions—without breaking the automated flow.
+
+When execution reaches an approval node:
+
+1. The node status changes to **Blocked** (shown in amber on the canvas).
+2. The designated approver receives a notification.
+3. The approver reviews the completed work and clicks **Approve** or **Reject** in the node detail panel.
+4. If approved, execution resumes from that node. If rejected, the Blueprint pauses and you decide how to proceed.
+
+<Note>
+  At least one approver must be listed on every approval node. The Blueprint validator will block execution if any approval node has no approvers configured.
+</Note>
+
+## Jira sync
+
+If you have Jira credentials configured in **Settings → Integrations**, Synapse can sync your Blueprint bidirectionally with a Jira project. Nodes map to Jira issue types—objectives and epics become Epics, user stories become Stories, tasks become Tasks—and status changes flow both ways.
+
+To enable sync, open your Blueprint's settings and toggle **Jira Sync** on. Select the target Jira project and configure the field mapping. Once enabled, changes you make in Synapse appear in Jira within a few seconds, and Jira status updates reflect back on the canvas.
+
+## Real-time execution tracking
+
+While a Blueprint is running, the canvas updates live. Each node's border color and icon change to reflect its current status:
+
+| Status | Appearance | Meaning |
+|--------|-----------|---------|
+| Not started | Gray outline | Ready but not yet running |
+| In progress | Blue outline, spinner | Specialist is actively working |
+| Completed | Green outline, check | Successfully finished |
+| Blocked | Amber outline, warning | Waiting for approval or dependency |
+| Failed | Red outline, X | Execution error—see the node log |
+| Skipped | Yellow outline, slash | Manually skipped by a team member |
+
+Click any node during execution to open its detail panel and view the specialist's live log output, including the commands it ran, files it created, and any errors it encountered.

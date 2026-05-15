@@ -3,6 +3,10 @@ title: "Build automation pipelines with the Workflow Builder"
 description: "Design automation workflows on a node-based canvas, connect them to Synapse agents, and monitor every run in real time from the dashboard."
 ---
 
+<Note>
+  **Coming soon.** Workflow Module documentation is being prepared and will be added after launch.
+</Note>
+
 The Workflow Builder lets you design automation workflows visually rather than writing orchestration code. You place nodes on a canvas, connect them with edges that define the execution path, and the platform runs the resulting workflow on your behalf. Workflows can trigger agents, call external APIs, branch on conditions, and report their status back to the Synapse dashboard as they run.
 
 ## The node-based canvas
@@ -60,12 +64,12 @@ Use **Cmd/Ctrl + A** to select all nodes, and **Cmd/Ctrl + D** to duplicate a se
 
 ## Connecting to agents and Mastra
 
-Agent task nodes connect to the same agent fleet available in the Agent Hub and action plans. When a workflow reaches an agent task node, Synapse invokes the configured agent through the Mastra framework—the same POD execution environment described on the [AI agents](/features/ai-agents) page. The agent receives the task description plus any context passed from earlier nodes, completes its work in an isolated sandbox, and returns its output as structured data that flows into the next node.
+Agent task nodes connect to the same specialist fleet available in the Agent Hub and Blueprints. When a workflow reaches an agent task node, Synapse invokes the configured specialist through the Mastra framework—the same Execution Node described on the [AI agents](/features/ai-agents) page. The agent receives the task description plus any context passed from earlier nodes, completes its work in an isolated sandbox, and returns its output as structured data that flows into the next node.
 
 You can chain multiple agent task nodes in sequence—for example, running AXIOM to generate a technical design, then FORGE to generate code from that design, then SENTINEL to validate the result—without writing any glue code.
 
 <Note>
-  Workflows that include agent task nodes consume execution credits in the same way as action plan POD sessions. Each agent invocation spins up a sandboxed environment for the duration of the task.
+  Workflows that include agent task nodes consume execution credits in the same way as Blueprint Runs. Each specialist invocation spins up a sandboxed Execution Node for the duration of the task.
 </Note>
 
 ## Execution tracking

@@ -1,15 +1,15 @@
 ---
-title: "Action Plans API — plans, POD execution, and reviews"
-description: "Manage action plans, trigger POD execution, retrieve execution receipts, submit file reviews, and estimate execution cost with the Synapse v2 API."
+title: "Blueprints API — plans, Run execution, and reviews"
+description: "Manage Blueprints, launch governed Runs, retrieve execution receipts, submit file reviews, and estimate execution cost with the Synapse v2 API."
 ---
 
-Action plans are the primary unit of orchestration in Synapse. You create an action plan to describe a feature or change, and the platform uses it to generate tasks, schedule agent execution, and track progress. The endpoints below cover the full lifecycle — from listing existing plans to triggering a POD execution run and reviewing the results.
+Blueprints are the primary unit of governed delivery in Synapse. You create a Blueprint to describe a feature or change, and the platform uses it to generate tasks, schedule specialist execution, and track progress. The endpoints below cover the full lifecycle — from listing existing Blueprints to launching a Run and reviewing the results.
 
 All `v2` endpoints are served from `https://api.synapse-architect.com/api/v2`. All endpoints require a JWT Bearer token in the `Authorization` header.
 
-## List action plans
+## List Blueprints
 
-Use this endpoint to retrieve all action plans in a project, with optional filters by status or source type.
+Use this endpoint to retrieve all Blueprints in a project, with optional filters by status or source type.
 
 <ParamField query="status" type="string">
   Filter by plan status. Accepted values: `draft`, `planning`, `ready`, `executing`.
@@ -41,8 +41,8 @@ curl -X GET "https://api.synapse-architect.com/api/v2/action-plans?status=planni
 **`GET /api/v2/action-plans`**
 
 <ResponseField name="action_plans" type="array">
-  List of action plan objects.
-  <Expandable title="action plan object">
+  List of Blueprint objects.
+  <Expandable title="Blueprint object">
     <ResponseField name="id" type="string (uuid)">Unique plan identifier.</ResponseField>
     <ResponseField name="name" type="string">Human-readable plan name.</ResponseField>
     <ResponseField name="status" type="string">Current lifecycle status.</ResponseField>
@@ -65,20 +65,20 @@ curl -X GET "https://api.synapse-architect.com/api/v2/action-plans?status=planni
 
 ---
 
-## Create an action plan
+## Create a Blueprint
 
 **`POST /api/v2/action-plans`** — Returns `201 Created`.
 
 <ParamField body="name" type="string" required>
-  Display name for the plan.
+  Display name for the Blueprint.
 </ParamField>
 
 <ParamField body="description" type="string">
-  Free-text description of what the plan delivers.
+  Free-text description of what the Blueprint delivers.
 </ParamField>
 
 <ParamField body="source_type" type="string" required>
-  Origin of the plan. One of `prd`, `manual`, or `import`.
+  Origin of the Blueprint. One of `prd`, `manual`, or `import`.
 </ParamField>
 
 <ParamField body="source_content" type="string">
@@ -86,7 +86,7 @@ curl -X GET "https://api.synapse-architect.com/api/v2/action-plans?status=planni
 </ParamField>
 
 <ParamField body="project_id" type="string (uuid)" required>
-  Project this plan belongs to.
+  Project this Blueprint belongs to.
 </ParamField>
 
 <ParamField body="yolo_level" type="number">
@@ -122,11 +122,11 @@ curl -X POST "https://api.synapse-architect.com/api/v2/action-plans" \
 
 ---
 
-## Get an action plan
+## Get a Blueprint
 
 **`GET /api/v2/action-plans/:id`**
 
-Returns the full plan record including all tasks and their current status.
+Returns the full Blueprint record including all tasks and their current status.
 
 <CodeGroup>
 ```bash cURL
@@ -149,20 +149,20 @@ curl "https://api.synapse-architect.com/api/v2/action-plans/ap-uuid" \
 ```
 </CodeGroup>
 
-<ResponseField name="id" type="string (uuid)">Plan identifier.</ResponseField>
+<ResponseField name="id" type="string (uuid)">Blueprint identifier.</ResponseField>
 <ResponseField name="tasks" type="array">Ordered list of generated tasks.</ResponseField>
 
 ---
 
-## Update an action plan
+## Update a Blueprint
 
 **`PATCH /api/v2/action-plans/:id`**
 
-Updates mutable fields on an existing plan. Only include the fields you want to change.
+Updates mutable fields on an existing Blueprint. Only include the fields you want to change.
 
 <ParamField body="name" type="string">New display name.</ParamField>
 <ParamField body="description" type="string">Updated description.</ParamField>
-<ParamField body="status" type="string">Transition the plan to a new status.</ParamField>
+<ParamField body="status" type="string">Transition the Blueprint to a new status.</ParamField>
 <ParamField body="yolo_level" type="number">Updated autonomy level (1–5).</ParamField>
 
 <CodeGroup>
@@ -176,11 +176,11 @@ curl -X PATCH "https://api.synapse-architect.com/api/v2/action-plans/ap-uuid" \
 
 ---
 
-## Launch POD execution
+## Launch a Run
 
 **`POST /api/v2/board/pod-execute`**
 
-Dispatches an execution run for one or more board tasks. Authentication is via JWT Bearer token; the tenant is derived automatically from your token.
+Launch a Run — dispatches approved Blueprint tasks to specialist agents in an isolated Execution Node. Authentication is via JWT Bearer token; the tenant is derived automatically from your token.
 
 <ParamField body="project_id" type="string (uuid)" required>
   Project context for the execution run.
@@ -240,7 +240,7 @@ curl -X POST "https://api.synapse-architect.com/api/v2/board/pod-execute" \
 
 <ResponseField name="session_id" type="string (uuid)">ID of the created execution session.</ResponseField>
 <ResponseField name="execution_id" type="string (uuid)">Internal execution record ID.</ResponseField>
-<ResponseField name="action_plan_id" type="string (uuid)">Action plan used for this run.</ResponseField>
+<ResponseField name="action_plan_id" type="string (uuid)">Blueprint identifier used for this Run.</ResponseField>
 <ResponseField name="total_tasks" type="number">Number of tasks dispatched.</ResponseField>
 <ResponseField name="skipped_tasks" type="number">Tasks excluded (e.g., already complete).</ResponseField>
 <ResponseField name="task_mapping" type="object">Map of task IDs to ghost plan node IDs.</ResponseField>
@@ -325,20 +325,20 @@ curl -X POST "https://api.synapse-architect.com/api/v2/execution-sessions/sessio
 
 **`POST /api/v2/execution-sessions/estimate`**
 
-Returns a pre-execution cost and duration estimate before you commit to a POD run. If you omit `task_count`, Synapse counts tasks directly from the action plan.
+Returns a pre-execution cost and duration estimate before you commit to a Run. If you omit `task_count`, Synapse counts tasks directly from the Blueprint.
 
 Auth: JWT (`req.auth`).
 
 <ParamField body="action_plan_id" type="string (uuid)">
-  Action plan to estimate. If provided and `task_count` is omitted, the API counts tasks automatically.
+  Blueprint to estimate. If provided and `task_count` is omitted, the API counts tasks automatically.
 </ParamField>
 
 <ParamField body="pod_config" type="object">
-  POD configuration to factor into the estimate (sandbox size, tier, etc.).
+  Run configuration to factor into the estimate (sandbox size, tier, etc.).
 </ParamField>
 
 <ParamField body="task_count" type="number">
-  Manual task count override. Useful when you know the scope without specifying an action plan.
+  Manual task count override. Useful when you know the scope without specifying a Blueprint.
 </ParamField>
 
 <CodeGroup>
