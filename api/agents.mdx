@@ -84,7 +84,7 @@ curl "https://api.synapse-architect.com/api/agents/forge" \
 
 **`POST /api/agents/:agent_id/execute`**
 
-Invokes an agent directly with a task description and optional context. Use this endpoint when you want to run a single-agent task without creating a full action plan or execution session.
+Invokes an agent directly with a task description and optional context. Use this endpoint when you want to run a single-specialist task without creating a full Blueprint or execution session.
 
 <ParamField body="task" type="string" required>
   Plain-language description of what the agent should do.
@@ -131,5 +131,5 @@ curl -X POST "https://api.synapse-architect.com/api/agents/forge/execute" \
 <ResponseField name="error" type="string | null">Error message if the invocation failed, otherwise `null`.</ResponseField>
 
 <Note>
-  Direct agent invocations are not subject to the governance gate pipeline that runs during full POD execution. If you need Sentinel validation, use `POST /api/v2/board/pod-execute` instead.
+  Direct specialist invocations are not subject to the governance gate pipeline that runs during a full governed Run. If you need Sentinel validation, use `POST /api/v2/board/pod-execute` instead.
 </Note>
