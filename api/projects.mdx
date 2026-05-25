@@ -15,7 +15,7 @@ All endpoints require a JWT Bearer token. The base URL is `https://api.synapse-a
 
 Creates a new project and links Salesforce and GitHub connections in a single atomic operation. If you already have a project and only need to add connections, include `project_id` in the body — the endpoint skips project creation and links to the existing record instead.
 
-On partial failure the response still returns `200` but includes a `errors` array describing which steps failed.
+On partial failure the response still returns `200` but includes an `errors` array describing which steps failed.
 
 <ParamField body="project_id" type="string (uuid)">
   Existing project ID. When provided, the endpoint operates in "link only" mode and skips project creation.
