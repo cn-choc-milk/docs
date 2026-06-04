@@ -1,3 +1,8 @@
 force-app/main/default/objects/CustomerTracker__c/CustomerTracker__c.object-meta.xml
 force-app/main/default/classes/CustomerTrackerService.cls
 force-app/main/default/classes/CustomerTrackerService.cls-meta.xml
+force-app/main/default/classes/CustomerTrackerServiceTest.cls
+force-app/main/default/classes/CustomerTrackerService.cls
+force-app/main/default/classes/CustomerTrackerServiceTest.cls-meta.xml
+force-app/main/default/classes/CustomerTrackerService.cls
+force-app/main/default/classes/CustomerTrackerServiceTest.cls
