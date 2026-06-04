@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Customer Tracker</label>
+    <pluralLabel>Customer Trackers</pluralLabel>
+    <nameField>
+        <type>Text</type>
+        <label>Customer Tracker Name</label>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <description>Tracks all customer management, activity, and process status for downstream business automation. Extend per process requirements.</description>
+    <enableReports>true</enableReports>
+    <enableActivities>true</enableActivities>
+    <enableHistory>false</enableHistory>
+</CustomObject>
