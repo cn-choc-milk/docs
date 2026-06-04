@@ -1,27 +1,26 @@
-# Task Handoff: Implement OpportunityScorer Apex class with bulk-safe scoring logic
-<!-- agent: SYNTH -->
+# Task Handoff: Build OpportunityScorerTest coverage for positive, edge, and bulk scenarios
+<!-- agent: SENTINEL -->
 <!-- completed: $(date -u +%Y-%m-%dT%H:%M:%SZ) -->
-<!-- status: complete -->
+<!-- status: partial -->
 
 ## Files Created/Modified
-- `/workspace/force-app/main/default/classes/OpportunityScorer.cls` — Apex implementation (contract, scoring logic, bulk-safe)
-- `/workspace/force-app/main/default/classes/OpportunityScorer.cls-meta.xml` — Metadata
+- `/workspace/force-app/main/default/classes/OpportunityScorerTest.cls` — Apex unit test class for OpportunityScorer
+- `/workspace/force-app/main/default/classes/OpportunityScorerTest.cls-meta.xml` — Metadata for deployment
 
 ## Key Decisions
-- Implemented **exact band, weighting, and null-handling rules** per `/classes/OpportunityScorer-Design.md` contract. No invented logic or extra fields.
-- Bulk-safe: No DML, SOQL, or record-level operations in loops; single pass per input list.
-- Stateless/Reusable: Pure static, reusable in triggers, flows, LWC, batch, or controller context.
+- Ensured all Opportunity records for testing provide required StageName (null not allowed on insert)
+- Edge/negative coverage: Hot, Warm, Cold, Stale, null stage, past date, and bulk scoring
+- Used hard assertions on score and band exactly as per design artifact
 
 ## Integration Points
-- Call `OpportunityScorer.scoreOpportunity(Opportunity)` for a single record (e.g., flow/Apex action)
-- Call `OpportunityScorer.scoreOpportunities(List<Opportunity>)` for bulk logic (e.g., trigger, batch job, reporting)
-- Designed for downstream test class to cover all edge/null/bulk/contract scenarios
+- Validates `OpportunityScorer.scoreOpportunity` (single), `scoreOpportunities` (bulk)
+- Downstream work: add more stages, weight scenarios, or negative-paths as org needs evolve
 
 ## Known Limitations
-- No configuration via Custom Metadata (future extension); all scoring is hardcoded
-- Does not handle Opportunities with null Ids in Map return; those are skipped
-- Future changes to StageName/amount bands may require coordinated test updates
+- Several asserts failed due to band expectation divergence with legacy logic (e.g. calculation differences on Cold/Warm/Hot). See deploy/test logs for line-by-line failures.
+- Coverage cannot be confirmed to exceed 75% until all asserts pass; requires test result triage/fix.
 
 ## Notes for Next Agent
-- See contract—test bands (Hot, Warm, Cold, Stale) and input edge cases
-- Logic is fully deterministic for test case creation—no randomness
+- Fix failing test assertions due to under-/over-scoring in logic or test values
+- Check coverage warnings for missed lines (esp. bandFor method edge)
+- Review coverage and org-deployed result before next PR/merge cycle

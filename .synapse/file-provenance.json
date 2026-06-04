@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-06-04T02:42:12.060Z",
+  "updated_at": "2026-06-04T02:44:47.112Z",
   "files": {
     "force-app/main/default/classes/OpportunityScorer-Design.md": {
       "path": "force-app/main/default/classes/OpportunityScorer-Design.md",
@@ -203,6 +203,102 @@
             "key": "agent_skill",
             "source": "agent_skill_bindings",
             "content_hash": "22c730956b62df61c5f61528f12b2e0053989af9bda75cd920d9c7bd5006aa91"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/classes/OpportunityScorerTest.cls": {
+      "path": "force-app/main/default/classes/OpportunityScorerTest.cls",
+      "updated_at": "2026-06-04T02:44:29.558Z",
+      "tool": "write_file",
+      "agent": "SENTINEL",
+      "skill_source": "none",
+      "skills": [],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T02:43:23.315Z",
+        "skills": [],
+        "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "SENTINEL",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "none",
+            "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/classes/OpportunityScorerTest.cls-meta.xml": {
+      "path": "force-app/main/default/classes/OpportunityScorerTest.cls-meta.xml",
+      "updated_at": "2026-06-04T02:44:07.007Z",
+      "tool": "write_file",
+      "agent": "SENTINEL",
+      "skill_source": "none",
+      "skills": [],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T02:43:23.315Z",
+        "skills": [],
+        "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "SENTINEL",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "none",
+            "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    ".synapse/task-handoff.md": {
+      "path": ".synapse/task-handoff.md",
+      "updated_at": "2026-06-04T02:44:47.112Z",
+      "tool": "write_file",
+      "agent": "SENTINEL",
+      "skill_source": "none",
+      "skills": [],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T02:43:23.315Z",
+        "skills": [],
+        "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "SENTINEL",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "none",
+            "content_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           },
           {
             "key": "pod_task_prompt",
