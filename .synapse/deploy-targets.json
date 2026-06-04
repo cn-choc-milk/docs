@@ -1,0 +1,8 @@
+force-app/main/default/classes/CustomerTrackerTriggerHandler.cls
+force-app/main/default/classes/CustomerTrackerTriggerHandler.cls-meta.xml
+force-app/main/default/triggers/CustomerTrackerTrigger.trigger
+force-app/main/default/triggers/CustomerTrackerTrigger.trigger-meta.xml
+force-app/main/default/classes/CustomerTrackerTriggerHandler.cls
+force-app/main/default/triggers/CustomerTrackerTrigger.trigger
+force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls
+force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls-meta.xml

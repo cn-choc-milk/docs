@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-06-04T14:57:08.417Z",
+  "files": {
+    "force-app/main/default/classes/CustomerTrackerTriggerHandler.cls": {
+      "path": "force-app/main/default/classes/CustomerTrackerTriggerHandler.cls",
+      "updated_at": "2026-06-04T14:56:09.589Z",
+      "tool": "write_file",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/classes/CustomerTrackerTriggerHandler.cls-meta.xml": {
+      "path": "force-app/main/default/classes/CustomerTrackerTriggerHandler.cls-meta.xml",
+      "updated_at": "2026-06-04T14:55:29.231Z",
+      "tool": "create_apex_class",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/triggers/CustomerTrackerTrigger.trigger": {
+      "path": "force-app/main/default/triggers/CustomerTrackerTrigger.trigger",
+      "updated_at": "2026-06-04T14:56:17.488Z",
+      "tool": "write_file",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/triggers/CustomerTrackerTrigger.trigger-meta.xml": {
+      "path": "force-app/main/default/triggers/CustomerTrackerTrigger.trigger-meta.xml",
+      "updated_at": "2026-06-04T14:55:37.753Z",
+      "tool": "create_apex_trigger",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls": {
+      "path": "force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls",
+      "updated_at": "2026-06-04T14:57:04.298Z",
+      "tool": "write_file",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    },
+    "force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls-meta.xml": {
+      "path": "force-app/main/default/classes/CustomerTrackerTriggerHandlerTest.cls-meta.xml",
+      "updated_at": "2026-06-04T14:57:08.417Z",
+      "tool": "write_file",
+      "agent": "AXIOM",
+      "skill_source": "registry",
+      "skills": [
+        {
+          "skill_key": "salesforce",
+          "display_name": "Salesforce",
+          "version": "1.0.0",
+          "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf"
+        }
+      ],
+      "fallback_static_skill": null,
+      "skill_snapshot": {
+        "schema_version": 1,
+        "created_at": "2026-06-04T14:54:07.425Z",
+        "skills": [
+          {
+            "skill_key": "salesforce",
+            "display_name": "Salesforce",
+            "source": "system",
+            "source_repo": null,
+            "source_path": null,
+            "version": "1.0.0",
+            "content_hash": "d75928f601c5b36d62f636b2159bcb2a22950024c2efd629bac1b9f52a0df9cf",
+            "bundled_files": [],
+            "binding_mode": "context",
+            "priority": 0
+          }
+        ],
+        "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+      },
+      "prompt_manifest": {
+        "schema_version": 1,
+        "execution_mode": "pod",
+        "agent": "AXIOM",
+        "layers": [
+          {
+            "key": "agent_skill",
+            "source": "agent_skill_bindings",
+            "content_hash": "d6485036641ca39f8e860d6133afe92b3cc3c35ce48e41e8b3e0c3c8d4849fbe"
+          },
+          {
+            "key": "pod_task_prompt",
+            "source": "AgentInvoker.taskContent",
+            "content_hash": null
+          }
+        ]
+      }
+    }
+  }
+}
