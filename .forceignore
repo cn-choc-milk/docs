@@ -1,0 +1,10 @@
+package.xml
+**/jsconfig.json
+**/.eslintrc.json
+**/__tests__/**
+logs
+*.log
+node_modules/
+.eslintcache
+.DS_Store
+.env
